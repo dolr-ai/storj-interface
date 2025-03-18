@@ -3,6 +3,8 @@ use axum::{routing::get, Router};
 use std::sync::Arc;
 use tokio::{signal, sync::Notify};
 
+mod routes;
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let app = Router::new().route("/health", get(health));
