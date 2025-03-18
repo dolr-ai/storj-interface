@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 /// Args for duplication request
 pub struct Args {
     /// The publisher user principal supplied to off chain agent
@@ -13,5 +15,5 @@ pub struct Args {
     /// This is used for segregation
     is_nsfw: bool,
     /// key-value pair to be added to video's metadata on storj
-    metadata: HashMap<String, String>,
+    metadata: BTreeMap<String, String>,
 }
