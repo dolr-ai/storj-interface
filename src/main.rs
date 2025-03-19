@@ -1,13 +1,23 @@
 use anyhow::Context;
-use axum::{routing::get, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
+use consts::ACCESS_GRANT;
+use once_cell::sync::Lazy;
 use std::sync::Arc;
 use tokio::{signal, sync::Notify};
 
+pub(crate) mod consts;
 mod routes;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let app = Router::new().route("/health", get(health));
+    Lazy::force(&ACCESS_GRANT);
+
+    let app = Router::new()
+        .route("/health", get(health))
+        .route("/duplicate", post(routes::duplicate::handler));
 
     let addr = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 
@@ -34,6 +44,7 @@ async fn main() -> anyhow::Result<()> {
         .context("Server error")
 }
 
+/// Simple path to check that the server is running
 async fn health() -> &'static str {
     "alive"
 }
