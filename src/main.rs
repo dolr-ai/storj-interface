@@ -17,7 +17,8 @@ async fn main() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/health", get(health))
-        .route("/duplicate", post(routes::duplicate::handler));
+        .route("/duplicate", post(routes::duplicate::handler))
+        .route("/move-to-nsfw", post(routes::move2nsfw::handler));
 
     let addr = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 
