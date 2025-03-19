@@ -10,6 +10,18 @@ POST {{host}}/duplicate
 }
 HTTP 200
 
+# Segregate nsfw videos
+POST {{host}}/duplicate
+{
+  "publisher_user_id": "{{publisher}}",
+  "video_id": "7ec40a0b9aba4307a97e8666822ed563",
+  "is_nsfw": true,
+  "metadata": {
+    "test": "value"
+  }
+}
+HTTP 200
+
 # when the video doesn't exist
 POST {{host}}/duplicate
 {
