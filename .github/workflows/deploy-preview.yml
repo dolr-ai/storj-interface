@@ -44,7 +44,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: built-binary
-      - run: ls -R
       - run: |
           mkdir -p target/x86_64-unknown-linux-musl/release
           mv storj-interface target/x86_64-unknown-linux-musl/release/storj-interface
@@ -57,7 +56,7 @@ jobs:
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Set secret tokens
         run: |
-          APP_NAME="pr-${{github.event.number}}-yral-storj-interface"
+          APP_NAME="pr-${{github.event.number}}-yral-dapp-storj-interface"
           flyctl secrets set STORJ_ACCESS_GRANT="$STORJ_ACCESS_GRANT" --app "$APP_NAME" --stage
           flyctl secrets set SERVICE_SECRET_TOKEN="$SERVICE_SECRET_TOKEN" --app "$APP_NAME" --stage
           flyctl deploy --app $APP_NAME
