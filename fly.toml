@@ -1,10 +1,6 @@
-app = "yral-storj-interface"
 primary_region = "bom"
 
 [build]
-
-[deploy]
-  strategy = "bluegreen"
 
 [http_service]
   internal_port = 3000

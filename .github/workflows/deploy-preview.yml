@@ -1,0 +1,74 @@
+name: deploy preview
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+  # FLY_ORG:  
+
+jobs:
+  build_binary:
+    uses: ./.github/workflows/build-binary.yml
+    with:
+      publish-artifact: true
+
+  destroy_preview:
+    if: ${{github.event.pull_request.state == 'closed'}}
+    runs-on: ubuntu-latest
+    environment:
+      name: pr-${{ github.event.number }}
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Deploy
+        id: destroy
+        uses: superfly/fly-pr-review-apps@1.2.1
+
+  preview:
+    if: ${{ github.event.pull_request.state == 'open'}}
+    needs: build_binary
+    runs-on: ubuntu-latest
+
+    # Only run one deployment at a time per PR.
+    concurrency:
+      group: pr-${{ github.event.number }}
+
+    # Create a GitHub deployment environment per staging app so it shows up
+    # in the pull request UI.
+    environment: Deployment
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: built-binary
+      - run: |
+          mkdir -p target/x86_64-unknown-linux-musl/release
+          mv storj-interface target/x86_64-unknown-linux-musl/release/storj-interface
+          chmod +x target/x86_64-unknown-linux-musl/release/storj-interface
+
+      - name: Deploy
+        id: deploy
+        uses: superfly/fly-pr-review-apps@1.5.0
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Set secret tokens
+        run: |
+          APP_NAME="pr-${{github.event.number}}-yral-dapp-storj-interface"
+          flyctl secrets set STORJ_ACCESS_GRANT="$STORJ_ACCESS_GRANT" --app "$APP_NAME" --stage
+          flyctl secrets set SERVICE_SECRET_TOKEN="$SERVICE_SECRET_TOKEN" --app "$APP_NAME" --stage
+          flyctl deploy --app $APP_NAME
+        env:
+          STORJ_ACCESS_GRANT: ${{ secrets.STORJ_ACCESS_GRANT }}
+          SERVICE_SECRET_TOKEN: ${{ secrets.SERVICE_SECRET_TOKEN }}
+
+  # e2e-tests:
+  #   needs: preview
+  #   uses: ./.github/workflows/e2e-tests.yml
+  #   if: ${{ github.event.pull_request.state == 'open'}}
+  #   secrets: inherit
+  #   with:
+  #     preview_url: https://pr-${{github.event.number}}-yral-dapp-hot-or-not-web-leptos-ssr.fly.dev
+  #     build_name: PR-${{github.event.number}}-commit-${{github.sha}}-attempt-${{github.run_attempt}}
