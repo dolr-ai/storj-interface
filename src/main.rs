@@ -22,10 +22,15 @@ async fn main() -> anyhow::Result<()> {
     Lazy::force(&SERVICE_SECRET_TOKEN);
 
     let app = Router::new()
-        .route("/health", get(health))
-        .route("/duplicate", post(routes::duplicate::handler))
-        .route("/move-to-nsfw", post(routes::move2nsfw::handler))
-        .layer(middleware::from_fn(authorize));
+        .route(
+            "/duplicate",
+            post(routes::duplicate::handler).layer(middleware::from_fn(authorize)),
+        )
+        .route(
+            "/move-to-nsfw",
+            post(routes::move2nsfw::handler).layer(middleware::from_fn(authorize)),
+        )
+        .route("/health", get(health));
 
     let addr = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 
