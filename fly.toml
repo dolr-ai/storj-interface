@@ -1,4 +1,3 @@
-app = "yral-storj-interface"
 primary_region = "bom"
 
 [build]
