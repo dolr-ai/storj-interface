@@ -45,7 +45,10 @@ jobs:
         with:
           name: built-binary
       - run: ls -R
-      - run: chmod +x target/x86_64-unknown-linux-musl/release/storj-interface
+      - run: |
+          mkdir -p target/x86_64-unknown-linux-musl/release
+          mv storj-interface target/x86_64-unknown-linux-musl/release/storj-interface
+          chmod +x target/x86_64-unknown-linux-musl/release/storj-interface
 
       - name: Deploy
         id: deploy
