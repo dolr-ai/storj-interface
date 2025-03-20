@@ -8,8 +8,10 @@ env:
   FLY_ORG: tushar-saxena-yral 
 
 jobs:
-  build_check:
+  build_binary:
     uses: ./.github/workflows/build-binary.yml
+    with:
+      publish-artifact: true
 
   destroy_preview:
     if: ${{github.event.pull_request.state == 'closed'}}
@@ -25,7 +27,7 @@ jobs:
 
   preview:
     if: ${{ github.event.pull_request.state == 'open'}}
-    needs: build_check
+    needs: build_binary
     runs-on: ubuntu-latest
 
     # Only run one deployment at a time per PR.
