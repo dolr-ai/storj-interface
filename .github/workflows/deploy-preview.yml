@@ -44,6 +44,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: built-binary
+      - run: ls -R
       - run: chmod +x target/x86_64-unknown-linux-musl/release/storj-interface
 
       - name: Deploy
