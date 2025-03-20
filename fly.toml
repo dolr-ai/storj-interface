@@ -2,9 +2,6 @@ primary_region = "bom"
 
 [build]
 
-[deploy]
-  strategy = "bluegreen"
-
 [http_service]
   internal_port = 3000
   force_https = true
