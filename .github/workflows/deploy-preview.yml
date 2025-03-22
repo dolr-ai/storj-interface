@@ -40,6 +40,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+
+      - name: Testing api token
+        run: |
+          echo ${{ secrets.SERVICE_SECRET_TOKEN }} | wc -c
+
       - name: Download build
         uses: actions/download-artifact@v4
         with:
@@ -68,8 +73,7 @@ jobs:
     needs: preview
     uses: ./.github/workflows/e2e-tests.yml
     if: ${{ github.event.pull_request.state == 'open'}}
-    secrets:
-      SERVICE_SECRET_TOKEN: ${{ secrets.SERVICE_SECRET_TOKEN }}
+    secrets: inherit
     with:
       preview_url: https://pr-${{github.event.number}}-yral-dapp-storj-interface.fly.dev
       publisher: testuser-${{ github.sha }}
