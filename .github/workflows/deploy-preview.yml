@@ -68,8 +68,7 @@ jobs:
     needs: preview
     uses: ./.github/workflows/e2e-tests.yml
     if: ${{ github.event.pull_request.state == 'open'}}
-    secrets:
-      api_token: ${{ secrets.SERVICE_SECRET_TOKEN }}
+    secrets: inherit
     with:
       preview_url: https://pr-${{github.event.number}}-yral-dapp-storj-interface.fly.dev
       publisher: testuser-${{ github.sha }}
