@@ -1,6 +1,6 @@
 # proper input
 POST {{host}}/duplicate
-Authorization: Bearer testtoken
+Authorization: Bearer {{api_token}}
 {
   "publisher_user_id": "{{publisher}}",
   "video_id": "7ec40a0b9aba4307a97e8666822ed563",
@@ -13,7 +13,7 @@ HTTP 200
 
 # Segregate nsfw videos
 POST {{host}}/duplicate
-Authorization: Bearer testtoken
+Authorization: Bearer {{api_token}}
 {
   "publisher_user_id": "{{publisher}}",
   "video_id": "7ec40a0b9aba4307a97e8666822ed563",
@@ -51,7 +51,7 @@ HTTP 401
 
 # when the video doesn't exist
 POST {{host}}/duplicate
-Authorization: Bearer testtoken
+Authorization: Bearer {{api_token}}
 {
   "publisher_user_id": "{{publisher}}",
   "video_id": "an_id_that_doesnt_exist_on_cloudflare",
@@ -64,13 +64,13 @@ HTTP 404
 
 # malformed input
 POST {{host}}/duplicate
-Authorization: Bearer testtoken
+Authorization: Bearer {{api_token}}
 `malformed json input`
 HTTP 415
 
 # missing required information
 POST {{host}}/duplicate
-Authorization: Bearer testtoken
+Authorization: Bearer {{api_token}}
 {
   "video_id": "7ec40a0b9aba4307a97e8666822ed563",
   "is_nsfw": false,
