@@ -12,15 +12,15 @@ on:
       SERVICE_SECRET_TOKEN:
         required: true
 
-env:
-  HOST: ${{ inputs.preview_url }}
-  PUBLISHER: ${{ inputs.publisher }}
-  API_TOKEN: ${{ secrets.SERVICE_SECRET_TOKEN }}
 
 jobs:
   tests: 
     name: E2E Tests
     runs-on: ubuntu-latest
+    env:
+      HOST: ${{ inputs.preview_url }}
+      PUBLISHER: ${{ inputs.publisher }}
+      API_TOKEN: ${{ secrets.SERVICE_SECRET_TOKEN }}
     steps:
       - name: Testing api token
         run: |
