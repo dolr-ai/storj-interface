@@ -1,0 +1,60 @@
+name: nightwatch tests
+on:
+  workflow_call: 
+    inputs:
+      preview_url:
+        type: string
+        required: true
+      publisher:
+        type: string
+        required: true
+
+jobs:
+  tests: 
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    env:
+      HURL_host: ${{ inputs.preview_url }}
+      HURL_publisher: ${{ inputs.publisher }}
+      HURL_api_token: ${{ secrets.SERVICE_SECRET_TOKEN }}
+      HURL_sfw_share: ${{ secrets.SFW_SHARE }}
+      HURL_nsfw_share: ${{ secrets.NSFW_SHARE }}
+      HURL_video_id: 7ec40a0b9aba4307a97e8666822ed563
+      ACCESS: ${{ secrets.STORJ_ACCESS_GRANT }}
+
+    environment: Deployment
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Add hurl repo
+        run: sudo apt-add-repository -y ppa:lepapareil/hurl
+
+      - name: Cache and install hurl
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: hurl
+          version: 1.0
+
+      - name: Install uplink
+        run: |
+          curl -L https://github.com/storj/storj/releases/latest/download/uplink_linux_amd64.zip -o uplink_linux_amd64.zip
+          unzip -o uplink_linux_amd64.zip
+          sudo install uplink /usr/local/bin/uplink
+
+      - name: Run duplication tests
+        run: |
+          hurl --test test/duplicate.hurl
+          hurl --test test/confirm_duplicate.hurl
+
+      - name: Setup for move2nsfw tests
+        run: |
+          uplink rm --access="$ACCESS" "sj://yral-nsfw-video/$HURL_publisher/$HURL_video_id.mp4"
+
+      - name: Run move2nsfw tests
+        run: |
+          hurl --test test/move.hurl
+          hurl --test test/confirm_move.hurl
+
+      - name: Clean up buckets
+        run: |
+          uplink rm --access="$ACCESS" "sj://yral-nsfw-video/$HURL_publisher/$HURL_video_id.mp4"
