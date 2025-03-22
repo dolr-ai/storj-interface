@@ -34,7 +34,22 @@ jobs:
           packages: hurl
           version: 1.0
 
-      - name: Run duplication hurl tests
+      - name: Install uplink
+        run: |
+          curl -L https://github.com/storj/storj/releases/latest/download/uplink_linux_amd64.zip -o uplink_linux_amd64.zip
+          unzip -o uplink_linux_amd64.zip
+          sudo install uplink /usr/local/bin/uplink
+
+      - name: Run duplication tests
         run: |
           hurl --test test/duplicate.hurl
           hurl --test test/confirm_duplicate.hurl
+
+      - name: Setup for move2nsfw tests
+        run: |
+          uplink rm --access="{{ secrets.STORJ_ACCESS_GRANT }}" "sj://yral-nsfw-video/$HURL_publisher/$HURL_video_id.mp4"
+
+      - name: Run move2nsfw tests
+        run: |
+          hurl --test test/move.hurl
+          hurl --test test/confirm_move.hurl

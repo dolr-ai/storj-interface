@@ -3,7 +3,7 @@ POST {{host}}/move-to-nsfw
 Authorization: Bearer {{api_token}}
 {
   "publisher_user_id": "{{publisher}}",
-  "video_id": "7ec40a0b9aba4307a97e8666822ed563"
+  "video_id": "{{video_id}}"
 }
 HTTP 200
 
@@ -11,7 +11,7 @@ HTTP 200
 POST {{host}}/move-to-nsfw
 {
   "publisher_user_id": "{{publisher}}",
-  "video_id": "7ec40a0b9aba4307a97e8666822ed563"
+  "video_id": "{{video_id}}"
 }
 HTTP 401
 
@@ -20,7 +20,7 @@ POST {{host}}/move-to-nsfw
 Authorization: Bearer wrongtoken
 {
   "publisher_user_id": "{{publisher}}",
-  "video_id": "7ec40a0b9aba4307a97e8666822ed563"
+  "video_id": "{{video_id}}"
 }
 HTTP 401
 
@@ -34,6 +34,6 @@ HTTP 415
 POST {{host}}/move-to-nsfw
 Authorization: Bearer {{api_token}}
 {
-  "video_id": "7ec40a0b9aba4307a97e8666822ed563"
+  "video_id": "{{video_id}}"
 }
 HTTP 422
