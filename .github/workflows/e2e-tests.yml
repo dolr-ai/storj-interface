@@ -8,9 +8,6 @@ on:
       publisher:
         type: string
         required: true
-    secrets:
-      api_token:
-        required: true
 
 jobs:
   tests: 
