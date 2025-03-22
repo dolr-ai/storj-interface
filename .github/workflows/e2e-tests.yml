@@ -8,10 +8,6 @@ on:
       publisher:
         type: string
         required: true
-    secrets:
-      SERVICE_SECRET_TOKEN:
-        required: true
-
 
 jobs:
   tests: 
