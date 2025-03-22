@@ -8,6 +8,9 @@ on:
       publisher:
         type: string
         required: true
+      api_token:
+        type: string
+        required: true
 
 jobs:
   tests: 
@@ -17,11 +20,11 @@ jobs:
       HOST: ${{ inputs.preview_url }}
       PUBLISHER: ${{ inputs.publisher }}
     steps:
+      - uses: actions/checkout@v3
+
       - name: Testing api token
         run: |
           echo ${{ secrets.SERVICE_SECRET_TOKEN }} | wc -c
-
-      - uses: actions/checkout@v3
 
       - name: Add hurl repo
         run: sudo apt-add-repository -y ppa:lepapareil/hurl
