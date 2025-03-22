@@ -25,7 +25,7 @@ jobs:
 
       - name: Testing api token
         run: |
-          echo ${{ secrets.SERVICE_SECRET_TOKEN }} | wc -c
+          echo ${{ secrets.api_token }} | wc -c
 
       - name: Add hurl repo
         run: sudo apt-add-repository -y ppa:lepapareil/hurl
