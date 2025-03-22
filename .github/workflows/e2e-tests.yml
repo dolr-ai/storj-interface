@@ -19,6 +19,7 @@ jobs:
     env:
       HOST: ${{ inputs.preview_url }}
       PUBLISHER: ${{ inputs.publisher }}
+    environment: Deployment
     steps:
       - uses: actions/checkout@v3
 
