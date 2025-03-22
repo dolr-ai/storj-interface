@@ -19,13 +19,10 @@ jobs:
     env:
       HOST: ${{ inputs.preview_url }}
       PUBLISHER: ${{ inputs.publisher }}
-    environment: Deployment
+      APIT_TOKEN: ${{ secrets.api_token }}
+
     steps:
       - uses: actions/checkout@v3
-
-      - name: Testing api token
-        run: |
-          echo ${{ secrets.api_token }} | wc -c
 
       - name: Add hurl repo
         run: sudo apt-add-repository -y ppa:lepapareil/hurl
