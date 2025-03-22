@@ -19,7 +19,7 @@ jobs:
     env:
       HOST: ${{ inputs.preview_url }}
       PUBLISHER: ${{ inputs.publisher }}
-      APIT_TOKEN: ${{ secrets.api_token }}
+      API_TOKEN: ${{ secrets.api_token }}
 
     steps:
       - uses: actions/checkout@v3
