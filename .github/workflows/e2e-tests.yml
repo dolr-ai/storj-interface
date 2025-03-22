@@ -12,13 +12,17 @@ on:
 env:
   HOST: ${{ inputs.preview_url }}
   PUBLISHER: ${{ inputs.publisher }}
-  SERVICE_SECRET_TOKEN: ${{ secrets.SERVICE_SECRET_TOKEN }}
+  API_TOKEN: ${{ secrets.SERVICE_SECRET_TOKEN }}
 
 jobs:
   tests: 
     name: E2E Tests
     runs-on: ubuntu-latest
     steps:
+      - name: Testing api token
+        run: |
+          echo $API_TOKEN | wc -c
+
       - uses: actions/checkout@v3
 
       - name: Add hurl repo
@@ -31,4 +35,4 @@ jobs:
           version: 1.0
 
       - name: Run duplication hurl tests
-        run: hurl --variable host="$HOST" --variable publisher="$PUBLISHER" --variable api_token="$SERVICE_SECRET_TOKEN" --test test/duplicate.hurl
+        run: hurl --variable host="$HOST" --variable publisher="$PUBLISHER" --variable api_token="$API_TOKEN" --test test/duplicate.hurl
