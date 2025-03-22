@@ -20,11 +20,10 @@ jobs:
     env:
       HOST: ${{ inputs.preview_url }}
       PUBLISHER: ${{ inputs.publisher }}
-      API_TOKEN: ${{ secrets.SERVICE_SECRET_TOKEN }}
     steps:
       - name: Testing api token
         run: |
-          echo $API_TOKEN | wc -c
+          echo ${{ secrets.SERVICE_SECRET_TOKEN }} | wc -c
 
       - uses: actions/checkout@v3
 
