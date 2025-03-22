@@ -14,8 +14,12 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     env:
-      HOST: ${{ inputs.preview_url }}
-      PUBLISHER: ${{ inputs.publisher }}
+      HURL_host: ${{ inputs.preview_url }}
+      HURL_publisher: ${{ inputs.publisher }}
+      HURL_api_token: ${{ secrets.SERVICE_SECRET_TOKEN }}
+      HURL_sfw_share: ${{ secrets.SFW_SHARE }}
+      HURL_nsfw_share: ${{ secrets.NSFW_SHARE }}
+      HURL_video_id: 7ec40a0b9aba4307a97e8666822ed563
 
     environment: Deployment
     steps:
@@ -31,4 +35,6 @@ jobs:
           version: 1.0
 
       - name: Run duplication hurl tests
-        run: hurl --variable host="$HOST" --variable publisher="$PUBLISHER" --variable api_token=${{ secrets.SERVICE_SECRET_TOKEN }} --test test/duplicate.hurl
+        run: |
+          hurl --test test/duplicate.hurl
+          hurl --test test/confirm_duplicate.hurl

@@ -3,7 +3,7 @@ POST {{host}}/duplicate
 Authorization: Bearer {{api_token}}
 {
   "publisher_user_id": "{{publisher}}",
-  "video_id": "7ec40a0b9aba4307a97e8666822ed563",
+  "video_id": "{{video_id}}",
   "is_nsfw": false,
   "metadata": {
     "test": "value"
@@ -16,7 +16,7 @@ POST {{host}}/duplicate
 Authorization: Bearer {{api_token}}
 {
   "publisher_user_id": "{{publisher}}",
-  "video_id": "7ec40a0b9aba4307a97e8666822ed563",
+  "video_id": "{{video_id}}",
   "is_nsfw": true,
   "metadata": {
     "test": "value"
@@ -28,7 +28,7 @@ HTTP 200
 POST {{host}}/duplicate
 {
   "publisher_user_id": "{{publisher}}",
-  "video_id": "7ec40a0b9aba4307a97e8666822ed563",
+  "video_id": "{{video_id}}",
   "is_nsfw": false,
   "metadata": {
     "test": "value"
@@ -41,7 +41,7 @@ POST {{host}}/duplicate
 Authorization: Bearer wrongtoken
 {
   "publisher_user_id": "{{publisher}}",
-  "video_id": "7ec40a0b9aba4307a97e8666822ed563",
+  "video_id": "{{video_id}}",
   "is_nsfw": false,
   "metadata": {
     "test": "value"
@@ -72,7 +72,7 @@ HTTP 415
 POST {{host}}/duplicate
 Authorization: Bearer {{api_token}}
 {
-  "video_id": "7ec40a0b9aba4307a97e8666822ed563",
+  "video_id": "{{video_id}}",
   "is_nsfw": false,
   "metadata": {
     "test": "value"
