@@ -2,7 +2,7 @@ use axum::{response::IntoResponse, Json};
 use reqwest::StatusCode;
 use serde_json::json;
 use std::process::Stdio;
-use storj_interface::duplicate::Args;
+use storj_interface::move2nsfw::Args;
 use tokio::process::Command;
 
 use crate::consts::{ACCESS_GRANT, YRAL_NSFW_VIDEOS, YRAL_VIDEOS};
