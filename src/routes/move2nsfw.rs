@@ -1,24 +1,11 @@
 use axum::{response::IntoResponse, Json};
 use reqwest::StatusCode;
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::process::Stdio;
+use storj_interface::move2nsfw::Args;
 use tokio::process::Command;
 
 use crate::consts::{ACCESS_GRANT, YRAL_NSFW_VIDEOS, YRAL_VIDEOS};
-
-/// Args for moving a video to nsfw bucket
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Args {
-    /// The publisher user principal supplied to off chain agent
-    ///
-    /// This used as directory key
-    publisher_user_id: String,
-    /// The video id on cloudflare
-    ///
-    /// This is used as object key
-    video_id: String,
-}
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {

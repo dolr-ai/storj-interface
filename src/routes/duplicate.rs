@@ -1,32 +1,13 @@
 use axum::{response::IntoResponse, Json};
 use futures_util::StreamExt;
 use reqwest::StatusCode;
-use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{collections::BTreeMap, process::Stdio};
+use std::process::Stdio;
+use storj_interface::duplicate::Args;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
 use crate::consts::{ACCESS_GRANT, YRAL_NSFW_VIDEOS, YRAL_VIDEOS};
-
-/// Args for duplication request
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Args {
-    /// The publisher user principal supplied to off chain agent
-    ///
-    /// This used as directory key
-    publisher_user_id: String,
-    /// The video id on cloudflare
-    ///
-    /// This is used as object key
-    video_id: String,
-    /// Whether the video contains nsfw content
-    ///
-    /// This is used for segregation
-    is_nsfw: bool,
-    /// key-value pair to be added to video's metadata on storj
-    metadata: BTreeMap<String, String>,
-}
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
