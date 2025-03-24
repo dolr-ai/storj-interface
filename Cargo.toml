@@ -3,6 +3,14 @@ name = "storj-interface"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "storj_interface"
+path = "src/lib.rs"
+
+[[bin]]
+name = "storj-interface"  # Same as lib name
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1.0.97"
 axum = "0.8.1"
