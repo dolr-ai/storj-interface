@@ -7,7 +7,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use consts::{ACCESS_GRANT, SERVICE_SECRET_TOKEN};
+use consts::{ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, SERVICE_SECRET_TOKEN};
 use once_cell::sync::Lazy;
 use reqwest::{header::AUTHORIZATION, StatusCode};
 use std::sync::Arc;
@@ -18,7 +18,8 @@ mod routes;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    Lazy::force(&ACCESS_GRANT);
+    Lazy::force(&ACCESS_GRANT_SFW);
+    Lazy::force(&ACCESS_GRANT_NSFW);
     Lazy::force(&SERVICE_SECRET_TOKEN);
 
     let app = Router::new()
