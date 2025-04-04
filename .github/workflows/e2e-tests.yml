@@ -49,8 +49,8 @@ jobs:
       - name: Ensure metadata exists
         run: |
           sleep 1s
-          uplink meta get --access="$ACCESS" "sj://yral-videos/$HURL_publisher/$HURL_video_id.mp4"
-          uplink meta get --access="$ACCESS" "sj://yral-videos/$HURL_publisher/$HURL_video_id.mp4" | jq -e 'select(.test == "value")'
+          uplink meta get --access="$ACCESS" "sj://yral-videos/$HURL_publisher/$HURL_video_id.mp4" | tee meta.json
+          jq -e 'select(.test == "value")' meta.json
 
       - name: Setup for move2nsfw tests
         run: |
