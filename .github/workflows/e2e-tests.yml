@@ -32,7 +32,7 @@ jobs:
       - name: Cache and install hurl
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
-          packages: hurl
+          packages: hurl jq
           version: 1.0
 
       - name: Install uplink
@@ -45,6 +45,10 @@ jobs:
         run: |
           hurl --test test/duplicate.hurl
           hurl --test test/confirm_duplicate.hurl
+
+      - name: Ensure metadata exists
+        run: |
+          uplink meta get --access="$ACCESS" "sj://yral-videos/$HURL_publisher/$HURL_video_id.mp4" | jq -e 'select(.test == "value")'
 
       - name: Setup for move2nsfw tests
         run: |
