@@ -1,3 +1,4 @@
+use anyhow::Context;
 use axum::{response::IntoResponse, Json};
 use futures_util::StreamExt;
 use reqwest::StatusCode;
@@ -49,21 +50,25 @@ impl IntoResponse for Error {
     }
 }
 
-pub async fn handler(Json(request): Json<Args>) -> Result<impl IntoResponse, Error> {
-    let (bucket, grant) = if request.is_nsfw {
+pub async fn handler(
+    Json(Args {
+        publisher_user_id,
+        video_id,
+        is_nsfw,
+        metadata,
+    }): Json<Args>,
+) -> Result<impl IntoResponse, Error> {
+    let (bucket, grant) = if is_nsfw {
         (YRAL_NSFW_VIDEOS.as_str(), ACCESS_GRANT_NSFW.as_str())
     } else {
         (YRAL_VIDEOS.as_str(), ACCESS_GRANT_SFW.as_str())
     };
 
-    let dest = format!(
-        "sj://{}/{}/{}.mp4",
-        bucket, request.publisher_user_id, request.video_id
-    );
+    let dest = format!("sj://{bucket}/{publisher_user_id}/{video_id}.mp4",);
 
     let source = format!(
         "https://customer-2p3jflss4r4hmpnz.cloudflarestream.com/{}/downloads/default.mp4",
-        request.video_id
+        video_id
     );
 
     let req = reqwest::get(source).await?;
@@ -75,6 +80,8 @@ pub async fn handler(Json(request): Json<Args>) -> Result<impl IntoResponse, Err
     }
 
     let mut stream = req.bytes_stream();
+    let metadata = serde_json::to_string(&metadata)
+        .expect("serialization to go through as we are guaranteed utf-8");
 
     let mut child = Command::new("uplink")
         .args([
@@ -82,6 +89,7 @@ pub async fn handler(Json(request): Json<Args>) -> Result<impl IntoResponse, Err
             "--interactive=false",
             "--analytics=false",
             "--progress=false",
+            format!("--metadata={metadata}").as_str(),
             "--access",
             grant,
             "-",
