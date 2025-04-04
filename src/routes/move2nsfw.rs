@@ -5,7 +5,7 @@ use std::process::Stdio;
 use storj_interface::move2nsfw::Args;
 use tokio::process::Command;
 
-use crate::consts::{ACCESS_GRANT, YRAL_NSFW_VIDEOS, YRAL_VIDEOS};
+use crate::consts::{ACCESS_GRANT_SFW, YRAL_NSFW_VIDEOS, YRAL_VIDEOS};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -35,13 +35,17 @@ impl IntoResponse for Error {
 
 pub async fn handler(Json(request): Json<Args>) -> Result<impl IntoResponse, Error> {
     let source = format!(
-        "sj://{YRAL_VIDEOS}/{}/{}.mp4",
-        request.publisher_user_id, request.video_id
+        "sj://{}/{}/{}.mp4",
+        YRAL_VIDEOS.as_str(),
+        request.publisher_user_id,
+        request.video_id
     );
 
     let dest = format!(
-        "sj://{YRAL_NSFW_VIDEOS}/{}/{}.mp4",
-        request.publisher_user_id, request.video_id
+        "sj://{}/{}/{}.mp4",
+        YRAL_NSFW_VIDEOS.as_str(),
+        request.publisher_user_id,
+        request.video_id
     );
 
     let mut child = Command::new("uplink")
@@ -51,7 +55,7 @@ pub async fn handler(Json(request): Json<Args>) -> Result<impl IntoResponse, Err
             "--analytics=false",
             "--progress=false",
             "--access",
-            ACCESS_GRANT.as_str(),
+            ACCESS_GRANT_SFW.as_str(),
             source.as_str(),
             dest.as_str(), // from stdin to dest
         ])

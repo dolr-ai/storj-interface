@@ -7,7 +7,7 @@ use storj_interface::duplicate::Args;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
-use crate::consts::{ACCESS_GRANT, YRAL_NSFW_VIDEOS, YRAL_VIDEOS};
+use crate::consts::{ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, YRAL_NSFW_VIDEOS, YRAL_VIDEOS};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -50,15 +50,15 @@ impl IntoResponse for Error {
 }
 
 pub async fn handler(Json(request): Json<Args>) -> Result<impl IntoResponse, Error> {
-    let bucket = if request.is_nsfw {
-        YRAL_NSFW_VIDEOS
+    let (bucket, grant) = if request.is_nsfw {
+        (YRAL_NSFW_VIDEOS.as_str(), ACCESS_GRANT_NSFW.as_str())
     } else {
-        YRAL_VIDEOS
+        (YRAL_VIDEOS.as_str(), ACCESS_GRANT_SFW.as_str())
     };
 
     let dest = format!(
-        "sj://{bucket}/{}/{}.mp4",
-        request.publisher_user_id, request.video_id
+        "sj://{}/{}/{}.mp4",
+        bucket, request.publisher_user_id, request.video_id
     );
 
     let source = format!(
@@ -83,7 +83,7 @@ pub async fn handler(Json(request): Json<Args>) -> Result<impl IntoResponse, Err
             "--analytics=false",
             "--progress=false",
             "--access",
-            ACCESS_GRANT.as_str(),
+            grant,
             "-",
             dest.as_str(), // from stdin to dest
         ])
