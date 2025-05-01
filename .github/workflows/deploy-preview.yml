@@ -66,6 +66,6 @@ jobs:
     if: ${{ github.event.pull_request.state == 'open'}}
     secrets: inherit
     with:
-      preview_url: https://pr-${{github.event.number}}-yral-dapp-storj-interface.fly.dev
+      preview_url: https://pr-${{github.event.number}}-dolr-ai-storj-interface.fly.dev
       publisher: testuser-${{ github.sha }}
 
