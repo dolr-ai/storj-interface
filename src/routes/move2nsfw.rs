@@ -1,23 +1,21 @@
 use axum::{response::IntoResponse, Json};
 use reqwest::StatusCode;
 use serde_json::json;
-use std::process::Stdio;
-use storj_interface::move2nsfw::Args;
-use tokio::process::Command;
+use sia_interface::move2nsfw::Args;
 
-use crate::consts::{ACCESS_GRANT_SFW, YRAL_NSFW_VIDEOS, YRAL_VIDEOS};
+use crate::sia_client::{SiaClient, SiaError};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
-    Io(#[from] std::io::Error),
+    Sia(#[from] SiaError),
 }
 
 impl IntoResponse for Error {
     fn into_response(self) -> axum::response::Response {
         println!("err: {self}");
         let (status, message) = match self {
-            Error::Io(_) => (
+            Error::Sia(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error. Check server logs.",
             ),
@@ -34,51 +32,22 @@ impl IntoResponse for Error {
 }
 
 pub async fn handler(Json(request): Json<Args>) -> Result<impl IntoResponse, Error> {
-    let source = format!(
-        "sj://{}/{}/{}.mp4",
-        YRAL_VIDEOS.as_str(),
-        request.publisher_user_id,
-        request.video_id
-    );
-
-    let dest = format!(
-        "sj://{}/{}/{}.mp4",
-        YRAL_NSFW_VIDEOS.as_str(),
-        request.publisher_user_id,
-        request.video_id
-    );
-
-    let mut child = Command::new("uplink")
-        .args([
-            "mv",
-            "--interactive=false",
-            "--analytics=false",
-            "--progress=false",
-            "--access",
-            ACCESS_GRANT_SFW.as_str(),
-            source.as_str(),
-            dest.as_str(), // from stdin to dest
-        ])
-        .stdin(Stdio::null())
-        .stdout(Stdio::inherit())
-        .spawn()?;
-
-    let status = child.wait().await?;
-
-    if !status.success() {
-        // TODO: analyze uplink's output to give a better error
-        return Ok((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({
-                "message": "uplink exitted with an error. Check server logs."
-            })),
-        ));
-    }
-
-    Ok((
-        StatusCode::OK,
-        Json(json!({
-            "message": "moved"
-        })),
-    ))
+    let sia_client = SiaClient::new();
+    
+    // Get bucket names
+    let sfw_bucket = sia_client.get_bucket_name(false);
+    let nsfw_bucket = sia_client.get_bucket_name(true);
+    
+    // Create object key
+    let object_key = format!("{}/{}.mp4", request.publisher_user_id, request.video_id);
+    
+    // Move object from SFW to NSFW bucket
+    sia_client.move_object(sfw_bucket, nsfw_bucket, &object_key).await?;
+    
+    Ok(Json(json!({
+        "message": "Video moved to NSFW bucket successfully",
+        "from_bucket": sfw_bucket,
+        "to_bucket": nsfw_bucket,
+        "key": object_key
+    })))
 }

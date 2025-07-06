@@ -48,6 +48,6 @@ jobs:
         if: ${{ inputs.publish-artifact }}
         with:
           name: built-binary
-          path: target/x86_64-unknown-linux-musl/release/storj-interface
+          path: target/x86_64-unknown-linux-musl/release/sia-interface
           retention-days: 1
           if-no-files-found: error

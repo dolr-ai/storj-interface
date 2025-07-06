@@ -1,17 +1,32 @@
+# Multi-stage build
+FROM rust:1.75-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache musl-dev pkgconfig openssl-dev
+
+WORKDIR /app
+
+# Copy cargo files first for better layer caching
+COPY Cargo.toml Cargo.lock ./
+
+# Copy source code
+COPY src ./src
+
+# Build the release binary
+RUN cargo build --release
+
+# Final runtime image
 FROM alpine:3.21.3
 
 WORKDIR /app
 
-# install uplink
-RUN apk add --no-cache curl
-RUN curl -L https://github.com/storj/storj/releases/latest/download/uplink_linux_amd64.zip -o uplink_linux_amd64.zip
-RUN unzip -o uplink_linux_amd64.zip
-RUN install uplink /usr/local/bin/uplink
+# Install runtime dependencies
+RUN apk add --no-cache curl ca-certificates
 
-# use the build from the host machine
-COPY target/x86_64-unknown-linux-musl/release/storj-interface .
+# Copy the binary from builder stage
+COPY --from=builder /app/target/release/sia-interface .
 
 EXPOSE 3000
 
-ENTRYPOINT ["./storj-interface"]
+ENTRYPOINT ["./sia-interface"]
 

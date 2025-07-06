@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # renterd - storage daemon (includes consensus)
+  renterd:
+    image: ghcr.io/siafoundation/renterd:latest
+    container_name: sia-renterd
+    ports:
+      - "9980:9980"  # HTTP API
+    volumes:
+      - renterd_data:/data
+    environment:
+      - RENTERD_API_PASSWORD=${RENTERD_API_PASSWORD:-changeme123}
+      - RENTERD_LOG_LEVEL=info
+    networks:
+      - sia-network
+    restart: unless-stopped
+    command: [
+      "--http", ":9980",
+      "--dir", "/data",
+      "--api-password", "${RENTERD_API_PASSWORD:-changeme123}",
+      "--autopilot.enabled=true"
+    ]
+
+  # walletd-sfw - wallet daemon for SFW content
+  walletd-sfw:
+    image: ghcr.io/siafoundation/walletd:latest
+    container_name: sia-walletd-sfw
+    ports:
+      - "9983:9980"  # HTTP API for SFW wallet
+    volumes:
+      - walletd_sfw_data:/data
+    environment:
+      - WALLETD_API_PASSWORD=${SFW_WALLETD_API_PASSWORD:-changeme_sfw_123}
+      - WALLETD_SEED=${SFW_WALLETD_SEED:-your_sfw_wallet_seed_phrase_here}
+      - WALLETD_LOG_LEVEL=info
+    networks:
+      - sia-network
+    restart: unless-stopped
+    command: [
+      "--http", ":9980",
+      "--dir", "/data",
+      "--api-password", "${SFW_WALLETD_API_PASSWORD:-changeme_sfw_123}"
+    ]
+
+  # walletd-nsfw - wallet daemon for NSFW content
+  walletd-nsfw:
+    image: ghcr.io/siafoundation/walletd:latest
+    container_name: sia-walletd-nsfw
+    ports:
+      - "9984:9980"  # HTTP API for NSFW wallet on different port
+    volumes:
+      - walletd_nsfw_data:/data
+    environment:
+      - WALLETD_API_PASSWORD=${NSFW_WALLETD_API_PASSWORD:-changeme_nsfw_123}
+      - WALLETD_SEED=${NSFW_WALLETD_SEED:-your_nsfw_wallet_seed_phrase_here}
+      - WALLETD_LOG_LEVEL=info
+    networks:
+      - sia-network
+    restart: unless-stopped
+    command: [
+      "--http", ":9980",
+      "--dir", "/data",
+      "--api-password", "${NSFW_WALLETD_API_PASSWORD:-changeme_nsfw_123}"
+    ]
+
+  # Our Sia interface application
+  sia-interface:
+    build: .
+    container_name: sia-interface-app
+    ports:
+      - "3000:3000"
+    environment:
+      - RENTERD_BASE_URL=http://renterd:9980
+      - SFW_WALLETD_BASE_URL=http://walletd-sfw:9980
+      - NSFW_WALLETD_BASE_URL=http://walletd-nsfw:9980
+      - RENTERD_API_PASSWORD=${RENTERD_API_PASSWORD:-changeme123}
+      - SFW_WALLETD_API_PASSWORD=${SFW_WALLETD_API_PASSWORD:-changeme_sfw_123}
+      - NSFW_WALLETD_API_PASSWORD=${NSFW_WALLETD_API_PASSWORD:-changeme_nsfw_123}
+      - SERVICE_SECRET_TOKEN=${SERVICE_SECRET_TOKEN:-your_secret_token}
+      - SFW_BUCKET=${SFW_BUCKET:-yral-videos}
+      - NSFW_BUCKET=${NSFW_BUCKET:-yral-nsfw-videos}
+    depends_on:
+      - renterd
+      - walletd-sfw
+      - walletd-nsfw
+    networks:
+      - sia-network
+    restart: unless-stopped
+
+volumes:
+  renterd_data:
+    driver: local
+  walletd_sfw_data:
+    driver: local
+  walletd_nsfw_data:
+    driver: local
+
+networks:
+  sia-network:
+    driver: bridge

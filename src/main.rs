@@ -7,7 +7,11 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use consts::{ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, SERVICE_SECRET_TOKEN};
+use consts::{
+    RENTERD_BASE_URL, SFW_WALLETD_BASE_URL, NSFW_WALLETD_BASE_URL, 
+    RENTERD_API_PASSWORD, SFW_WALLETD_API_PASSWORD, NSFW_WALLETD_API_PASSWORD,
+    SERVICE_SECRET_TOKEN,
+};
 use once_cell::sync::Lazy;
 use reqwest::{header::AUTHORIZATION, StatusCode};
 use std::sync::Arc;
@@ -15,11 +19,16 @@ use tokio::{signal, sync::Notify};
 
 pub(crate) mod consts;
 mod routes;
+mod sia_client;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    Lazy::force(&ACCESS_GRANT_SFW);
-    Lazy::force(&ACCESS_GRANT_NSFW);
+    Lazy::force(&RENTERD_BASE_URL);
+    Lazy::force(&SFW_WALLETD_BASE_URL);
+    Lazy::force(&NSFW_WALLETD_BASE_URL);
+    Lazy::force(&RENTERD_API_PASSWORD);
+    Lazy::force(&SFW_WALLETD_API_PASSWORD);
+    Lazy::force(&NSFW_WALLETD_API_PASSWORD);
     Lazy::force(&SERVICE_SECRET_TOKEN);
 
     let app = Router::new()

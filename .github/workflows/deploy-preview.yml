@@ -46,16 +46,20 @@ jobs:
           name: built-binary
       - run: |
           mkdir -p target/x86_64-unknown-linux-musl/release
-          mv storj-interface target/x86_64-unknown-linux-musl/release/storj-interface
-          chmod +x target/x86_64-unknown-linux-musl/release/storj-interface
+          mv sia-interface target/x86_64-unknown-linux-musl/release/sia-interface
+          chmod +x target/x86_64-unknown-linux-musl/release/sia-interface
 
       - name: Deploy
         id: deploy
         uses: superfly/fly-pr-review-apps@1.5.0
         with:
           secrets: |
-            STORJ_ACCESS_GRANT_SFW=${{ secrets.STORJ_ACCESS_GRANT }}
-            STORJ_ACCESS_GRANT_NSFW=${{ secrets.STORJ_ACCESS_GRANT }}
+            RENTERD_BASE_URL=${{ secrets.RENTERD_BASE_URL }}
+            SFW_WALLETD_BASE_URL=${{ secrets.SFW_WALLETD_BASE_URL }}
+            NSFW_WALLETD_BASE_URL=${{ secrets.NSFW_WALLETD_BASE_URL }}
+            RENTERD_API_PASSWORD=${{ secrets.RENTERD_API_PASSWORD }}
+            SFW_WALLETD_API_PASSWORD=${{ secrets.SFW_WALLETD_API_PASSWORD }}
+            NSFW_WALLETD_API_PASSWORD=${{ secrets.NSFW_WALLETD_API_PASSWORD }}
             SFW_BUCKET=yral-videos
             NSFW_BUCKET=yral-nsfw-videos
             SERVICE_SECRET_TOKEN=${{ secrets.SERVICE_SECRET_TOKEN }}
@@ -66,6 +70,6 @@ jobs:
     if: ${{ github.event.pull_request.state == 'open'}}
     secrets: inherit
     with:
-      preview_url: https://pr-${{github.event.number}}-dolr-ai-storj-interface.fly.dev
+      preview_url: https://pr-${{github.event.number}}-dolr-ai-sia-interface.fly.dev
       publisher: testuser-${{ github.sha }}
 
