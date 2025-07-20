@@ -1,2 +1,2 @@
-pub mod duplicate;
-pub mod move2nsfw;
+pub mod sia;
+pub mod storj;

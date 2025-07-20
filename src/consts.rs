@@ -25,3 +25,18 @@ pub static SERVICE_SECRET_TOKEN: Lazy<String> = Lazy::new(|| {
         std::env::var("SERVICE_SECRET_TOKEN").expect("A shared secret to be present")
     )
 });
+
+// Sia-related constants
+pub static SIA_SEED_SFW: Lazy<String> = Lazy::new(|| {
+    std::env::var("SIA_SFW_BUCKET_WALLET_SEED_PHRASE")
+        .expect("SIA seed for SFW wallet to be present: SIA_SFW_BUCKET_WALLET_SEED_PHRASE")
+});
+pub static SIA_SEED_NSFW: Lazy<String> = Lazy::new(|| {
+    std::env::var("SIA_NSFW_BUCKET_WALLET_SEED_PHRASE")
+        .expect("SIA seed for NSFW wallet to be present: SIA_NSFW_BUCKET_WALLET_SEED_PHRASE")
+});
+pub static RENTERD_API_URL_SFW: &str = "http://localhost:9980";
+pub static RENTERD_API_URL_NSFW: &str = "http://localhost:9981";
+pub static RENTERD_API_PASSWORD: &str = "1234"; // This doesnt matter because its localhost
+pub static SIA_BUCKET_SFW: &str = "yral-videos";
+pub static SIA_BUCKET_NSFW: &str = "yral-nsfw-videos";

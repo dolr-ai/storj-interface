@@ -66,8 +66,7 @@ pub async fn handler(
     let dest = format!("sj://{bucket}/{publisher_user_id}/{video_id}.mp4",);
 
     let source = format!(
-        "https://customer-2p3jflss4r4hmpnz.cloudflarestream.com/{}/downloads/default.mp4",
-        video_id
+        "https://customer-2p3jflss4r4hmpnz.cloudflarestream.com/{video_id}/downloads/default.mp4"
     );
 
     let req = reqwest::get(source).await?;
