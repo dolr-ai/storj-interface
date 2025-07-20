@@ -5,9 +5,12 @@ use axum::{
     middleware::{self, Next},
     response::IntoResponse,
     routing::{get, post},
-    Router,
+    Extension, Router,
 };
-use consts::{ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, SERVICE_SECRET_TOKEN};
+use consts::{
+    ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, RENTERD_API_PASSWORD, SERVICE_SECRET_TOKEN, SIA_SEED_NSFW,
+    SIA_SEED_SFW,
+};
 use once_cell::sync::Lazy;
 use reqwest::{header::AUTHORIZATION, StatusCode};
 use std::sync::Arc;
@@ -21,15 +24,32 @@ async fn main() -> anyhow::Result<()> {
     Lazy::force(&ACCESS_GRANT_SFW);
     Lazy::force(&ACCESS_GRANT_NSFW);
     Lazy::force(&SERVICE_SECRET_TOKEN);
+    Lazy::force(&SIA_SEED_SFW);
+    Lazy::force(&SIA_SEED_NSFW);
+
+    // Initialize renterd instances
+    routes::sia::init().await;
+
+    // Create token cache for app state
+    let token_cache = routes::sia::SiaTokenCache::new();
 
     let app = Router::new()
+        .layer(Extension(token_cache))
         .route(
-            "/duplicate",
-            post(routes::duplicate::handler).layer(middleware::from_fn(authorize)),
+            "/storj/duplicate",
+            post(routes::storj::duplicate::handler).layer(middleware::from_fn(authorize)),
         )
         .route(
-            "/move-to-nsfw",
-            post(routes::move2nsfw::handler).layer(middleware::from_fn(authorize)),
+            "/storj/move-to-nsfw",
+            post(routes::storj::move2nsfw::handler).layer(middleware::from_fn(authorize)),
+        )
+        .route(
+            "/sia/duplicate",
+            post(routes::sia::duplicate::handler).layer(middleware::from_fn(authorize)),
+        )
+        .route(
+            "/sia/move-to-nsfw",
+            post(routes::sia::move2nsfw::handler).layer(middleware::from_fn(authorize)),
         )
         .route("/health", get(health));
 

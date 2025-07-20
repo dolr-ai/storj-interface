@@ -59,6 +59,8 @@ jobs:
             SFW_BUCKET=yral-videos
             NSFW_BUCKET=yral-nsfw-videos
             SERVICE_SECRET_TOKEN=${{ secrets.SERVICE_SECRET_TOKEN }}
+            SIA_SFW_BUCKET_WALLET_SEED_PHRASE=${{ secrets.SIA_SFW_BUCKET_WALLET_SEED_PHRASE }}
+            SIA_NSFW_BUCKET_WALLET_SEED_PHRASE=${{ secrets.SIA_NSFW_BUCKET_WALLET_SEED_PHRASE }}
 
   e2e-tests:
     needs: preview
