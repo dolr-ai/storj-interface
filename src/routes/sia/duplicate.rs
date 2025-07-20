@@ -76,8 +76,7 @@ pub async fn handler(
 
     // Download from Cloudflare
     let source = format!(
-        "https://customer-2p3jflss4r4hmpnz.cloudflarestream.com/{}/downloads/default.mp4",
-        video_id
+        "https://customer-2p3jflss4r4hmpnz.cloudflarestream.com/{video_id}/downloads/default.mp4"
     );
 
     let req = reqwest::get(&source).await?;
@@ -91,10 +90,10 @@ pub async fn handler(
     let token = super::get_auth_token(base_url, &token_cache)
         .await
         .map_err(|e| Error::Internal(e.to_string()))?;
-    let cookie = format!("renterd_auth={}", token);
+    let cookie = format!("renterd_auth={token}");
 
     // Prepare the upload URL
-    let object_key = format!("{}/{}.mp4", publisher_user_id, video_id);
+    let object_key = format!("{publisher_user_id}/{video_id}.mp4");
     let upload_url = format!(
         "{}/api/worker/object/{}?bucket={}",
         base_url,

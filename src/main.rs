@@ -8,7 +8,7 @@ use axum::{
     Extension, Router,
 };
 use consts::{
-    ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, RENTERD_API_PASSWORD, SERVICE_SECRET_TOKEN, SIA_SEED_NSFW,
+    ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, SERVICE_SECRET_TOKEN, SIA_SEED_NSFW,
     SIA_SEED_SFW,
 };
 use once_cell::sync::Lazy;
@@ -62,7 +62,7 @@ async fn main() -> anyhow::Result<()> {
 
     tokio::spawn(async move {
         if let Err(err) = signal::ctrl_c().await {
-            eprintln!("Failed to listen for shutdown signal: {:#}", err);
+            eprintln!("Failed to listen for shutdown signal: {err:#}");
         }
         notify_clone.notify_one();
     });

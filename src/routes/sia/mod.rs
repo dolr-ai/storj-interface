@@ -80,11 +80,11 @@ pub async fn get_auth_token(
 
     // Token is expired or doesn't exist, get a new one
     let client = reqwest::Client::new();
-    let auth = BASE64.encode(format!(":{}", RENTERD_API_PASSWORD));
+    let auth = BASE64.encode(format!(":{RENTERD_API_PASSWORD}"));
 
     let response = client
-        .post(format!("{}/api/auth?validity=3600000", base_url))
-        .header(AUTHORIZATION, format!("Basic {}", auth))
+        .post(format!("{base_url}/api/auth?validity=3600000"))
+        .header(AUTHORIZATION, format!("Basic {auth}"))
         .send()
         .await?;
 
@@ -120,10 +120,10 @@ pub async fn create_bucket_if_not_exists(
     let client = reqwest::Client::new();
 
     // Set the auth cookie
-    let cookie = format!("renterd_auth={}", token);
+    let cookie = format!("renterd_auth={token}");
 
     // First, check if bucket exists
-    let check_url = format!("{}/api/bus/bucket/{}", base_url, bucket_name);
+    let check_url = format!("{base_url}/api/bus/bucket/{bucket_name}");
     let check_response = client
         .get(&check_url)
         .header("Cookie", &cookie)
@@ -133,14 +133,14 @@ pub async fn create_bucket_if_not_exists(
     match check_response.status() {
         StatusCode::OK => {
             // Bucket already exists
-            println!("✓ Bucket '{}' already exists", bucket_name);
+            println!("✓ Bucket '{bucket_name}' already exists");
             Ok(())
         }
         StatusCode::NOT_FOUND => {
             // Bucket doesn't exist, create it
-            println!("Creating bucket '{}'...", bucket_name);
+            println!("Creating bucket '{bucket_name}'...");
 
-            let create_url = format!("{}/api/bus/buckets", base_url);
+            let create_url = format!("{base_url}/api/bus/buckets");
             let create_request = CreateBucketRequest {
                 name: bucket_name.to_string(),
                 policy: BucketPolicy {
@@ -161,10 +161,10 @@ pub async fn create_bucket_if_not_exists(
                 );
             }
 
-            println!("✓ Bucket '{}' created successfully", bucket_name);
+            println!("✓ Bucket '{bucket_name}' created successfully");
             Ok(())
         }
-        status => Err(format!("Failed to check bucket: HTTP {}", status).into()),
+        status => Err(format!("Failed to check bucket: HTTP {status}").into()),
     }
 }
 
@@ -177,12 +177,11 @@ async fn download_renterd() -> Result<(), Box<dyn std::error::Error>> {
 
     // For Linux AMD64 only
     let download_url = format!(
-        "https://github.com/SiaFoundation/renterd/releases/download/{}/renterd_linux_amd64.zip",
-        renterd_version
+        "https://github.com/SiaFoundation/renterd/releases/download/{renterd_version}/renterd_linux_amd64.zip"
     );
 
-    println!("Downloading renterd {} for Linux AMD64...", renterd_version);
-    println!("URL: {}", download_url);
+    println!("Downloading renterd {renterd_version} for Linux AMD64...");
+    println!("URL: {download_url}");
 
     // Download the file
     let response = reqwest::get(&download_url).await?;
@@ -193,13 +192,13 @@ async fn download_renterd() -> Result<(), Box<dyn std::error::Error>> {
     let bytes = response.bytes().await?;
     println!("Downloaded {} bytes", bytes.len());
 
-    let zip_path = format!("{}/renterd.zip", renterd_dir);
+    let zip_path = format!("{renterd_dir}/renterd.zip");
     let mut file = fs::File::create(&zip_path)?;
     file.write_all(&bytes)?;
     file.flush()?;
     drop(file);
 
-    println!("Saved zip file to: {}", zip_path);
+    println!("Saved zip file to: {zip_path}");
 
     // Extract the zip file
     println!("Extracting renterd...");
@@ -216,7 +215,7 @@ async fn download_renterd() -> Result<(), Box<dyn std::error::Error>> {
 
     // Make executable (Linux)
     use std::os::unix::fs::PermissionsExt;
-    let renterd_path = format!("{}/renterd", renterd_dir);
+    let renterd_path = format!("{renterd_dir}/renterd");
     let mut perms = fs::metadata(&renterd_path)?.permissions();
     perms.set_mode(0o755);
     fs::set_permissions(&renterd_path, perms)?;
@@ -224,7 +223,7 @@ async fn download_renterd() -> Result<(), Box<dyn std::error::Error>> {
     // Clean up zip file
     fs::remove_file(&zip_path)?;
 
-    println!("renterd downloaded successfully to {}", renterd_dir);
+    println!("renterd downloaded successfully to {renterd_dir}");
     Ok(())
 }
 
@@ -239,7 +238,7 @@ pub async fn init() {
         match download_renterd().await {
             Ok(_) => println!("renterd downloaded successfully"),
             Err(e) => {
-                eprintln!("Failed to download renterd: {}", e);
+                eprintln!("Failed to download renterd: {e}");
                 return;
             }
         }
@@ -288,7 +287,7 @@ pub async fn init() {
             .wait()
             .await
             .expect("SFW renterd process wasn't running");
-        eprintln!("SFW renterd exited with: {}", status);
+        eprintln!("SFW renterd exited with: {status}");
     });
 
     // Give first instance time to start
@@ -320,7 +319,7 @@ pub async fn init() {
             .wait()
             .await
             .expect("NSFW renterd process wasn't running");
-        eprintln!("NSFW renterd exited with: {}", status);
+        eprintln!("NSFW renterd exited with: {status}");
     });
 
     // Give renterd instances time to start
@@ -338,13 +337,13 @@ pub async fn init() {
 
     // Create SFW bucket
     if let Err(e) = create_bucket_if_not_exists(RENTERD_API_URL_SFW, SIA_BUCKET_SFW, &cache).await {
-        eprintln!("Failed to create SFW bucket: {}", e);
+        eprintln!("Failed to create SFW bucket: {e}");
     }
 
     // Create NSFW bucket
     if let Err(e) = create_bucket_if_not_exists(RENTERD_API_URL_NSFW, SIA_BUCKET_NSFW, &cache).await
     {
-        eprintln!("Failed to create NSFW bucket: {}", e);
+        eprintln!("Failed to create NSFW bucket: {e}");
     }
 
     println!("\nInitialization complete!");

@@ -62,8 +62,8 @@ pub async fn handler(
     let nsfw_token = super::get_auth_token(RENTERD_API_URL_NSFW, &token_cache)
         .await
         .map_err(|e| Error::Internal(e.to_string()))?;
-    let sfw_cookie = format!("renterd_auth={}", sfw_token);
-    let nsfw_cookie = format!("renterd_auth={}", nsfw_token);
+    let sfw_cookie = format!("renterd_auth={sfw_token}");
+    let nsfw_cookie = format!("renterd_auth={nsfw_token}");
 
     let client = reqwest::Client::new();
 
