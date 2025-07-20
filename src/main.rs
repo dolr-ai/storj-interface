@@ -8,8 +8,7 @@ use axum::{
     Extension, Router,
 };
 use consts::{
-    ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, SERVICE_SECRET_TOKEN, SIA_SEED_NSFW,
-    SIA_SEED_SFW,
+    ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, SERVICE_SECRET_TOKEN, SIA_SEED_NSFW, SIA_SEED_SFW,
 };
 use once_cell::sync::Lazy;
 use reqwest::{header::AUTHORIZATION, StatusCode};
