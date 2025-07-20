@@ -49,18 +49,26 @@ jobs:
           mv storj-interface target/x86_64-unknown-linux-musl/release/storj-interface
           chmod +x target/x86_64-unknown-linux-musl/release/storj-interface
 
+      - name: Set app name
+        run: echo "APP_NAME=pr-${{ github.event.number }}-dolr-ai-storj-interface" >> $GITHUB_ENV
+
       - name: Deploy
         id: deploy
         uses: superfly/fly-pr-review-apps@1.5.0
         with:
-          secrets: |
-            STORJ_ACCESS_GRANT_SFW=${{ secrets.STORJ_ACCESS_GRANT }}
-            STORJ_ACCESS_GRANT_NSFW=${{ secrets.STORJ_ACCESS_GRANT }}
-            SFW_BUCKET=yral-videos
-            NSFW_BUCKET=yral-nsfw-videos
-            SERVICE_SECRET_TOKEN=${{ secrets.SERVICE_SECRET_TOKEN }}
-            SIA_SFW_BUCKET_WALLET_SEED_PHRASE="${{ secrets.SIA_SFW_BUCKET_WALLET_SEED_PHRASE }}"
-            SIA_NSFW_BUCKET_WALLET_SEED_PHRASE="${{ secrets.SIA_NSFW_BUCKET_WALLET_SEED_PHRASE }}"
+          config: fly.toml
+
+      - name: Set secrets
+        run: |
+          cat <<EOF | flyctl secrets import --app ${{ env.APP_NAME }}
+          STORJ_ACCESS_GRANT_SFW=${{ secrets.STORJ_ACCESS_GRANT }}
+          STORJ_ACCESS_GRANT_NSFW=${{ secrets.STORJ_ACCESS_GRANT }}
+          SFW_BUCKET=yral-videos
+          NSFW_BUCKET=yral-nsfw-videos
+          SERVICE_SECRET_TOKEN=${{ secrets.SERVICE_SECRET_TOKEN }}
+          SIA_SFW_BUCKET_WALLET_SEED_PHRASE=${{ secrets.SIA_SFW_BUCKET_WALLET_SEED_PHRASE }}
+          SIA_NSFW_BUCKET_WALLET_SEED_PHRASE=${{ secrets.SIA_NSFW_BUCKET_WALLET_SEED_PHRASE }}
+          EOF
 
   e2e-tests:
     needs: preview
