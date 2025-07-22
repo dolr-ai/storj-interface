@@ -112,6 +112,8 @@ pub async fn handler(
         pipe.write_all(&chunk).await?;
     }
 
+    pipe.shutdown().await?;
+
     let res = child.wait_with_output().await?;
 
     if !res.status.success() {
