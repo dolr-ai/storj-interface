@@ -42,7 +42,7 @@ async fn main() -> anyhow::Result<()> {
 
     tokio::spawn(async move {
         if let Err(err) = signal::ctrl_c().await {
-            eprintln!("Failed to listen for shutdown signal: {:#}", err);
+            eprintln!("Failed to listen for shutdown signal: {err:#}");
         }
         notify_clone.notify_one();
     });
