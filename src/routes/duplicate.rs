@@ -2,7 +2,7 @@ use axum::{response::IntoResponse, Json};
 use futures_util::StreamExt;
 use reqwest::StatusCode;
 use serde_json::json;
-use std::process::Stdio;
+use std::process::{ExitStatus, Stdio};
 use storj_interface::duplicate::Args;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
@@ -19,6 +19,9 @@ pub enum Error {
 
     #[error("Cloudflare returned non-ok status ({0}) when fetching the video")]
     Clouflare(StatusCode),
+
+    #[error("UplinkCli failed with status {0}")]
+    Uplink(ExitStatus),
 }
 
 impl IntoResponse for Error {
@@ -36,6 +39,10 @@ impl IntoResponse for Error {
             Error::Clouflare(_) => (
                 StatusCode::BAD_REQUEST,
                 "The video couldn't fetched from cloudflare. Check server logs.",
+            ),
+            Error::Uplink(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Uplink returned an error. Check server logs.",
             ),
         };
 
@@ -66,8 +73,7 @@ pub async fn handler(
     let dest = format!("sj://{bucket}/{publisher_user_id}/{video_id}.mp4",);
 
     let source = format!(
-        "https://customer-2p3jflss4r4hmpnz.cloudflarestream.com/{}/downloads/default.mp4",
-        video_id
+        "https://customer-2p3jflss4r4hmpnz.cloudflarestream.com/{video_id}/downloads/default.mp4"
     );
 
     let req = reqwest::get(source).await?;
@@ -95,7 +101,8 @@ pub async fn handler(
             dest.as_str(), // from stdin to dest
         ])
         .stdin(Stdio::piped())
-        .stdout(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()?;
 
     let mut pipe = child.stdin.take().expect("Stdin pipe to be opened for us");
@@ -103,6 +110,12 @@ pub async fn handler(
     while let Some(chunk) = stream.next().await {
         let chunk = chunk?;
         pipe.write_all(&chunk).await?;
+    }
+
+    let res = child.wait_with_output().await?;
+
+    if !res.status.success() {
+        return Err(Error::Uplink(res.status));
     }
 
     Ok(())
