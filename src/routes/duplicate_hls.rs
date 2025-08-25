@@ -144,12 +144,8 @@ pub async fn handler(multipart: Multipart) -> Result<impl IntoResponse, Error> {
     pipe.flush().await?;
     drop(pipe); // Close stdin to signal EOF
 
-    // Wait for uplink to complete
-    let status = child.wait().await?;
-
-    if !status.success() {
-        return Err(Error::Io(std::io::Error::other("uplink command failed")));
-    }
+    // Note: We don't wait for the uplink process to complete
+    // This matches the behavior of the /duplicate endpoint
 
     Ok(())
 }
