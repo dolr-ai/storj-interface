@@ -135,6 +135,7 @@ pub async fn handler(multipart: Multipart) -> Result<impl IntoResponse, Error> {
         ])
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .spawn()?;
 
     let mut pipe = child.stdin.take().expect("Stdin pipe to be opened for us");
