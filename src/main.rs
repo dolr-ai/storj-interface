@@ -1,6 +1,6 @@
 use anyhow::Context;
 use axum::{
-    extract::Request,
+    extract::{DefaultBodyLimit, Request},
     http::HeaderMap,
     middleware::{self, Next},
     response::IntoResponse,
@@ -34,7 +34,9 @@ async fn main() -> anyhow::Result<()> {
         )
         .route(
             "/hls/duplicate",
-            post(routes::duplicate_hls::handler).layer(middleware::from_fn(authorize)),
+            post(routes::duplicate_hls::handler)
+                .layer(DefaultBodyLimit::max(100 * 1024 * 1024)) // 100MB limit for HLS files
+                .layer(middleware::from_fn(authorize)),
         )
         .route("/health", get(health));
 

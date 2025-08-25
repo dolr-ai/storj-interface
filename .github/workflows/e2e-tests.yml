@@ -78,11 +78,15 @@ jobs:
         run: |
           # Update video_id environment variable for HLS tests
           export HURL_video_id=$HURL_hls_video_id
-          hurl --test test/duplicate_hls.hurl
+          # Add retry and longer timeout for streaming uploads
+          hurl --test --retry 3 --retry-interval 2000 --connect-timeout 30 test/duplicate_hls.hurl
           hurl --test test/confirm_duplicate_hls.hurl
 
       - name: Verify all HLS files were uploaded
         run: |
+          # Wait for uploads to complete
+          sleep 5
+          
           # List all files in SFW bucket
           echo "Files in SFW bucket:"
           uplink ls --recursive --access="$ACCESS" "sj://yral-videos/$HURL_hls_video_id/hls/"

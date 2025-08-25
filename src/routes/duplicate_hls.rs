@@ -1,4 +1,5 @@
-use axum::{body::Bytes, extract::Query, response::IntoResponse, Json};
+use axum::{body::Body, extract::Query, response::IntoResponse, Json};
+use futures_util::StreamExt;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::json;
@@ -54,7 +55,7 @@ pub struct HlsUploadParams {
 
 pub async fn handler(
     Query(params): Query<HlsUploadParams>,
-    body: Bytes,
+    body: Body,
 ) -> Result<impl IntoResponse, Error> {
     let (bucket, grant) = if params.is_nsfw {
         (YRAL_NSFW_VIDEOS.as_str(), ACCESS_GRANT_NSFW.as_str())
@@ -89,8 +90,19 @@ pub async fn handler(
 
     let mut pipe = child.stdin.take().expect("Stdin pipe to be opened for us");
 
-    // Write the body data to uplink
-    pipe.write_all(&body).await?;
+    // Stream the body data to uplink
+    let mut stream = body.into_data_stream();
+    while let Some(chunk) = stream.next().await {
+        match chunk {
+            Ok(data) => {
+                pipe.write_all(&data).await?;
+            }
+            Err(e) => {
+                return Err(Error::Hyper(e));
+            }
+        }
+    }
+
     pipe.flush().await?;
     drop(pipe); // Close stdin to signal EOF
 
