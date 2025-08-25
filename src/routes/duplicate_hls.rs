@@ -148,10 +148,7 @@ pub async fn handler(multipart: Multipart) -> Result<impl IntoResponse, Error> {
     let status = child.wait().await?;
 
     if !status.success() {
-        return Err(Error::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "uplink command failed",
-        )));
+        return Err(Error::Io(std::io::Error::other("uplink command failed")));
     }
 
     Ok(())
