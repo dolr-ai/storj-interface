@@ -1,9 +1,9 @@
 use axum::{
-    extract::{Query, Request},
+    body::Bytes,
+    extract::Query,
     response::IntoResponse,
     Json,
 };
-use futures_util::StreamExt;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::json;
@@ -59,7 +59,7 @@ pub struct HlsUploadParams {
 
 pub async fn handler(
     Query(params): Query<HlsUploadParams>,
-    request: Request,
+    body: Bytes,
 ) -> Result<impl IntoResponse, Error> {
     let (bucket, grant) = if params.is_nsfw {
         (YRAL_NSFW_VIDEOS.as_str(), ACCESS_GRANT_NSFW.as_str())
@@ -94,15 +94,10 @@ pub async fn handler(
 
     let mut pipe = child.stdin.take().expect("Stdin pipe to be opened for us");
 
-    // Get the body as a stream
-    let body = request.into_body();
-    let mut stream = body.into_data_stream();
-
-    // Stream the file data to uplink
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk?;
-        pipe.write_all(&chunk).await?;
-    }
+    // Write the body data to uplink
+    pipe.write_all(&body).await?;
+    pipe.flush().await?;
+    drop(pipe); // Close stdin to signal EOF
 
     // Note: We don't wait for the uplink process to complete
     // This matches the behavior of the /duplicate endpoint
