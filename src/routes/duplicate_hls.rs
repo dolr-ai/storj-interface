@@ -44,8 +44,6 @@ impl IntoResponse for Error {
 
 #[derive(Deserialize)]
 pub struct HlsUploadParams {
-    #[allow(dead_code)]
-    publisher_user_id: String,
     video_id: String,
     is_nsfw: bool,
     hls_file_name: String,
