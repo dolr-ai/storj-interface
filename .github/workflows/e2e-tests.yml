@@ -20,6 +20,7 @@ jobs:
       HURL_sfw_share: ${{ secrets.SFW_SHARE }}
       HURL_nsfw_share: ${{ secrets.NSFW_SHARE }}
       HURL_video_id: 7ec40a0b9aba4307a97e8666822ed563
+      HURL_hls_video_id: hls_test_7ec40a0b9aba4307a97e8666822ed563
       ACCESS: ${{ secrets.STORJ_ACCESS_GRANT }}
 
     environment: Deployment
@@ -54,7 +55,7 @@ jobs:
 
       - name: Setup for move2nsfw tests
         run: |
-          uplink rm --access="$ACCESS" "sj://yral-nsfw-video/$HURL_publisher/$HURL_video_id.mp4"
+          uplink rm --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4"
 
       - name: Run move2nsfw tests
         run: |
@@ -63,4 +64,48 @@ jobs:
 
       - name: Clean up buckets
         run: |
-          uplink rm --access="$ACCESS" "sj://yral-nsfw-video/$HURL_publisher/$HURL_video_id.mp4"
+          uplink rm --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4"
+
+      # HLS Tests
+      - name: Clean up any existing HLS test files
+        run: |
+          # Clean up SFW bucket
+          uplink rm --recursive --access="$ACCESS" "sj://yral-videos/$HURL_hls_video_id/hls/" || true
+          # Clean up NSFW bucket
+          uplink rm --recursive --access="$ACCESS" "sj://yral-nsfw-videos/${HURL_hls_video_id}_nsfw/hls/" || true
+
+      - name: Run HLS duplication tests
+        run: |
+          # Update video_id environment variable for HLS tests
+          export HURL_video_id=$HURL_hls_video_id
+          # Add retry and longer timeout for streaming uploads
+          hurl --test --retry 3 --retry-interval 2000 --connect-timeout 30 test/duplicate_hls.hurl
+          hurl --test test/confirm_duplicate_hls.hurl
+
+      - name: Verify all HLS files were uploaded
+        run: |
+          # Wait for uploads to complete
+          sleep 5
+          
+          # List all files in SFW bucket
+          echo "Files in SFW bucket:"
+          uplink ls --recursive --access="$ACCESS" "sj://yral-videos/$HURL_hls_video_id/hls/"
+          
+          # Count files - should have 7 files (1 master + 3 playlists + 3 ts files)
+          FILE_COUNT=$(uplink ls --recursive --access="$ACCESS" "sj://yral-videos/$HURL_hls_video_id/hls/" | grep -c "^OBJ")
+          if [ "$FILE_COUNT" -ne 7 ]; then
+            echo "ERROR: Expected 7 files in SFW bucket, found $FILE_COUNT"
+            exit 1
+          fi
+          
+          # Check NSFW bucket has at least master.m3u8
+          echo "Files in NSFW bucket:"
+          uplink ls --recursive --access="$ACCESS" "sj://yral-nsfw-videos/${HURL_hls_video_id}_nsfw/hls/"
+
+      - name: Clean up HLS test files
+        if: always()
+        run: |
+          # Clean up SFW bucket
+          uplink rm --recursive --access="$ACCESS" "sj://yral-videos/$HURL_hls_video_id/hls/" || true
+          # Clean up NSFW bucket
+          uplink rm --recursive --access="$ACCESS" "sj://yral-nsfw-videos/${HURL_hls_video_id}_nsfw/hls/" || true

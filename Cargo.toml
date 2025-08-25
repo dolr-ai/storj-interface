@@ -13,7 +13,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.97"
-axum = "0.8.1"
+axum = { version = "0.8.1", features = ["multipart"] }
 futures-util = "0.3.31"
 once_cell = "1.21.1"
 # using rustls-tls because we wanna cross-compile to musl, otherwise openssl becomes a pain

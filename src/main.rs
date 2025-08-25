@@ -1,6 +1,6 @@
 use anyhow::Context;
 use axum::{
-    extract::Request,
+    extract::{DefaultBodyLimit, Request},
     http::HeaderMap,
     middleware::{self, Next},
     response::IntoResponse,
@@ -27,9 +27,16 @@ async fn main() -> anyhow::Result<()> {
             "/duplicate",
             post(routes::duplicate::handler).layer(middleware::from_fn(authorize)),
         )
+        // NOTE: This will be removed as the upload happens in the very end of the pipeline and nsfw flag is passed into duplicate
         .route(
             "/move-to-nsfw",
             post(routes::move2nsfw::handler).layer(middleware::from_fn(authorize)),
+        )
+        .route(
+            "/hls/duplicate",
+            post(routes::duplicate_hls::handler)
+                .layer(DefaultBodyLimit::max(100 * 1024 * 1024)) // 100MB limit for HLS files
+                .layer(middleware::from_fn(authorize)),
         )
         .route("/health", get(health));
 
