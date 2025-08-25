@@ -1,9 +1,4 @@
-use axum::{
-    body::Bytes,
-    extract::Query,
-    response::IntoResponse,
-    Json,
-};
+use axum::{body::Bytes, extract::Query, response::IntoResponse, Json};
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::json;
