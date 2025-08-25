@@ -1,6 +1,6 @@
 use axum::{body::Bytes, extract::Multipart, response::IntoResponse, Json};
 use reqwest::StatusCode;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use std::collections::BTreeMap;
 use std::process::Stdio;
@@ -50,6 +50,7 @@ impl IntoResponse for Error {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize)]
 pub struct HlsUploadMetadata {
     publisher_user_id: String,

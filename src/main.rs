@@ -27,7 +27,6 @@ async fn main() -> anyhow::Result<()> {
             "/duplicate",
             post(routes::duplicate::handler).layer(middleware::from_fn(authorize)),
         )
-
         // NOTE: This will be removed as the upload happens in the very end of the pipeline and nsfw flag is passed into duplicate
         .route(
             "/move-to-nsfw",
