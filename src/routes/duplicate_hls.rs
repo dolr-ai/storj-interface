@@ -1,4 +1,9 @@
-use axum::{body::Bytes, extract::Multipart, response::IntoResponse, Json};
+use axum::{
+    extract::{Query, Request},
+    response::IntoResponse,
+    Json,
+};
+use futures_util::StreamExt;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::json;
@@ -17,27 +22,18 @@ pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
 
-    #[error("Invalid multipart data")]
-    InvalidMultipart,
-
-    #[error("Missing required field: {0}")]
-    MissingField(&'static str),
-
-    #[error("Invalid field value: {0}")]
-    InvalidField(&'static str),
+    #[error(transparent)]
+    Hyper(#[from] axum::Error),
 }
 
 impl IntoResponse for Error {
     fn into_response(self) -> axum::response::Response {
         println!("err: {self}");
         let (status, message) = match self {
-            Error::Network(_) | Error::Io(_) => (
+            Error::Network(_) | Error::Io(_) | Error::Hyper(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error. Check server logs.",
             ),
-            Error::InvalidMultipart | Error::MissingField(_) | Error::InvalidField(_) => {
-                (StatusCode::BAD_REQUEST, "Invalid request data")
-            }
         };
 
         (
@@ -50,9 +46,9 @@ impl IntoResponse for Error {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Deserialize)]
-pub struct HlsUploadMetadata {
+pub struct HlsUploadParams {
+    #[allow(dead_code)]
     publisher_user_id: String,
     video_id: String,
     is_nsfw: bool,
@@ -61,53 +57,11 @@ pub struct HlsUploadMetadata {
     metadata: BTreeMap<String, String>,
 }
 
-pub struct HlsUploadData {
-    metadata: HlsUploadMetadata,
-    file_data: Bytes,
-}
-
-async fn parse_multipart(mut multipart: Multipart) -> Result<HlsUploadData, Error> {
-    let mut json_data = None;
-    let mut file_data = None;
-
-    while let Some(field) = multipart
-        .next_field()
-        .await
-        .map_err(|_| Error::InvalidMultipart)?
-    {
-        let name = field.name().ok_or(Error::InvalidMultipart)?;
-
-        match name {
-            "data" => {
-                let text = field.text().await.map_err(|_| Error::InvalidMultipart)?;
-                json_data = Some(serde_json::from_str::<HlsUploadMetadata>(&text).map_err(
-                    |_| Error::InvalidField("data must be valid JSON with required fields"),
-                )?);
-            }
-            "file" => {
-                file_data = Some(field.bytes().await.map_err(|_| Error::InvalidMultipart)?);
-            }
-            _ => {} // Ignore unknown fields
-        }
-    }
-
-    let metadata = json_data.ok_or(Error::MissingField("data"))?;
-    let file_data = file_data.ok_or(Error::MissingField("file"))?;
-
-    if file_data.is_empty() {
-        return Err(Error::MissingField("file"));
-    }
-
-    Ok(HlsUploadData {
-        metadata,
-        file_data,
-    })
-}
-
-pub async fn handler(multipart: Multipart) -> Result<impl IntoResponse, Error> {
-    let data = parse_multipart(multipart).await?;
-
-    let (bucket, grant) = if data.metadata.is_nsfw {
+pub async fn handler(
+    Query(params): Query<HlsUploadParams>,
+    request: Request,
+) -> Result<impl IntoResponse, Error> {
+    let (bucket, grant) = if params.is_nsfw {
         (YRAL_NSFW_VIDEOS.as_str(), ACCESS_GRANT_NSFW.as_str())
     } else {
         (YRAL_VIDEOS.as_str(), ACCESS_GRANT_SFW.as_str())
@@ -115,10 +69,10 @@ pub async fn handler(multipart: Multipart) -> Result<impl IntoResponse, Error> {
 
     let dest = format!(
         "sj://{bucket}/{}/hls/{}",
-        data.metadata.video_id, data.metadata.hls_file_name
+        params.video_id, params.hls_file_name
     );
 
-    let metadata_str = serde_json::to_string(&data.metadata.metadata)
+    let metadata_str = serde_json::to_string(&params.metadata)
         .expect("serialization to go through as we are guaranteed utf-8");
 
     let mut child = Command::new("uplink")
@@ -140,10 +94,15 @@ pub async fn handler(multipart: Multipart) -> Result<impl IntoResponse, Error> {
 
     let mut pipe = child.stdin.take().expect("Stdin pipe to be opened for us");
 
-    // Write the file data to uplink
-    pipe.write_all(&data.file_data).await?;
-    pipe.flush().await?;
-    drop(pipe); // Close stdin to signal EOF
+    // Get the body as a stream
+    let body = request.into_body();
+    let mut stream = body.into_data_stream();
+
+    // Stream the file data to uplink
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        pipe.write_all(&chunk).await?;
+    }
 
     // Note: We don't wait for the uplink process to complete
     // This matches the behavior of the /duplicate endpoint
