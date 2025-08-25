@@ -31,6 +31,7 @@ async fn main() -> anyhow::Result<()> {
             "/move-to-nsfw",
             post(routes::move2nsfw::handler).layer(middleware::from_fn(authorize)),
         )
+        .route("/hls/duplicate", post(routes::duplicate_hls::handler))
         .route("/health", get(health));
 
     let addr = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();

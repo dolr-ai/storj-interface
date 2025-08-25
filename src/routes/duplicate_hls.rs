@@ -1,12 +1,11 @@
-use axum::{extract::Multipart, response::IntoResponse, Json};
-use bytes::Bytes;
+use axum::{body::Bytes, extract::Multipart, response::IntoResponse, Json};
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::BTreeMap;
 use std::process::Stdio;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
-use reqwest::StatusCode;
 
 use crate::consts::{ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, YRAL_NSFW_VIDEOS, YRAL_VIDEOS};
 
@@ -36,10 +35,9 @@ impl IntoResponse for Error {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error. Check server logs.",
             ),
-            Error::InvalidMultipart | Error::MissingField(_) | Error::InvalidField(_) => (
-                StatusCode::BAD_REQUEST,
-                "Invalid request data",
-            ),
+            Error::InvalidMultipart | Error::MissingField(_) | Error::InvalidField(_) => {
+                (StatusCode::BAD_REQUEST, "Invalid request data")
+            }
         };
 
         (
@@ -53,7 +51,7 @@ impl IntoResponse for Error {
 }
 
 #[derive(Deserialize)]
-struct HlsUploadMetadata {
+pub struct HlsUploadMetadata {
     publisher_user_id: String,
     video_id: String,
     is_nsfw: bool,
@@ -62,7 +60,7 @@ struct HlsUploadMetadata {
     metadata: BTreeMap<String, String>,
 }
 
-struct HlsUploadData {
+pub struct HlsUploadData {
     metadata: HlsUploadMetadata,
     file_data: Bytes,
 }
@@ -71,14 +69,19 @@ async fn parse_multipart(mut multipart: Multipart) -> Result<HlsUploadData, Erro
     let mut json_data = None;
     let mut file_data = None;
 
-    while let Some(field) = multipart.next_field().await.map_err(|_| Error::InvalidMultipart)? {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_| Error::InvalidMultipart)?
+    {
         let name = field.name().ok_or(Error::InvalidMultipart)?;
-        
+
         match name {
             "data" => {
                 let text = field.text().await.map_err(|_| Error::InvalidMultipart)?;
-                json_data = Some(serde_json::from_str::<HlsUploadMetadata>(&text)
-                    .map_err(|_| Error::InvalidField("data must be valid JSON with required fields"))?);
+                json_data = Some(serde_json::from_str::<HlsUploadMetadata>(&text).map_err(
+                    |_| Error::InvalidField("data must be valid JSON with required fields"),
+                )?);
             }
             "file" => {
                 file_data = Some(field.bytes().await.map_err(|_| Error::InvalidMultipart)?);
@@ -94,7 +97,10 @@ async fn parse_multipart(mut multipart: Multipart) -> Result<HlsUploadData, Erro
         return Err(Error::MissingField("file"));
     }
 
-    Ok(HlsUploadData { metadata, file_data })
+    Ok(HlsUploadData {
+        metadata,
+        file_data,
+    })
 }
 
 pub async fn handler(multipart: Multipart) -> Result<impl IntoResponse, Error> {
@@ -106,7 +112,10 @@ pub async fn handler(multipart: Multipart) -> Result<impl IntoResponse, Error> {
         (YRAL_VIDEOS.as_str(), ACCESS_GRANT_SFW.as_str())
     };
 
-    let dest = format!("sj://{bucket}/{}/hls/{}", data.metadata.video_id, data.metadata.hls_file_name);
+    let dest = format!(
+        "sj://{bucket}/{}/hls/{}",
+        data.metadata.video_id, data.metadata.hls_file_name
+    );
 
     let metadata_str = serde_json::to_string(&data.metadata.metadata)
         .expect("serialization to go through as we are guaranteed utf-8");
@@ -128,7 +137,7 @@ pub async fn handler(multipart: Multipart) -> Result<impl IntoResponse, Error> {
         .spawn()?;
 
     let mut pipe = child.stdin.take().expect("Stdin pipe to be opened for us");
-    
+
     // Write the file data to uplink
     pipe.write_all(&data.file_data).await?;
     pipe.flush().await?;
@@ -136,11 +145,11 @@ pub async fn handler(multipart: Multipart) -> Result<impl IntoResponse, Error> {
 
     // Wait for uplink to complete
     let status = child.wait().await?;
-    
+
     if !status.success() {
         return Err(Error::Io(std::io::Error::new(
             std::io::ErrorKind::Other,
-            "uplink command failed"
+            "uplink command failed",
         )));
     }
 
