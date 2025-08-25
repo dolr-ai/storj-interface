@@ -55,7 +55,7 @@ jobs:
 
       - name: Setup for move2nsfw tests
         run: |
-          uplink rm --access="$ACCESS" "sj://yral-nsfw-video/$HURL_publisher/$HURL_video_id.mp4"
+          uplink rm --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4"
 
       - name: Run move2nsfw tests
         run: |
@@ -64,7 +64,7 @@ jobs:
 
       - name: Clean up buckets
         run: |
-          uplink rm --access="$ACCESS" "sj://yral-nsfw-video/$HURL_publisher/$HURL_video_id.mp4"
+          uplink rm --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4"
 
       # HLS Tests
       - name: Clean up any existing HLS test files
