@@ -7,7 +7,10 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use consts::{ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, SERVICE_SECRET_TOKEN};
+use consts::{
+    ACCESS_GRANT_NSFW, HETZNER_S3_ACCESS_KEY, HETZNER_S3_BUCKET, HETZNER_S3_ENDPOINT,
+    HETZNER_S3_REGION, HETZNER_S3_SECRET_KEY, SERVICE_SECRET_TOKEN,
+};
 use once_cell::sync::Lazy;
 use reqwest::{header::AUTHORIZATION, StatusCode};
 use std::sync::Arc;
@@ -15,26 +18,42 @@ use tokio::{signal, sync::Notify};
 
 pub(crate) mod consts;
 mod routes;
+mod s3_client;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    Lazy::force(&ACCESS_GRANT_SFW);
+    // Force loading of Storj configuration (NSFW only)
     Lazy::force(&ACCESS_GRANT_NSFW);
     Lazy::force(&SERVICE_SECRET_TOKEN);
+
+    // Force loading of Hetzner S3 configuration
+    Lazy::force(&HETZNER_S3_ENDPOINT);
+    Lazy::force(&HETZNER_S3_BUCKET);
+    Lazy::force(&HETZNER_S3_ACCESS_KEY);
+    Lazy::force(&HETZNER_S3_SECRET_KEY);
+    Lazy::force(&HETZNER_S3_REGION);
+
+    // Initialize S3 client
+    let s3_client = s3_client::S3Client::new().await;
 
     let app = Router::new()
         .route(
             "/duplicate",
-            post(routes::duplicate::handler).layer(middleware::from_fn(authorize)),
+            post(routes::duplicate::handler)
+                .with_state(s3_client.clone())
+                .layer(middleware::from_fn(authorize)),
         )
         // NOTE: This will be removed as the upload happens in the very end of the pipeline and nsfw flag is passed into duplicate
         .route(
             "/move-to-nsfw",
-            post(routes::move2nsfw::handler).layer(middleware::from_fn(authorize)),
+            post(routes::move2nsfw::handler)
+                .with_state(s3_client.clone())
+                .layer(middleware::from_fn(authorize)),
         )
         .route(
             "/hls/duplicate",
             post(routes::duplicate_hls::handler)
+                .with_state(s3_client.clone())
                 .layer(DefaultBodyLimit::max(100 * 1024 * 1024)) // 100MB limit for HLS files
                 .layer(middleware::from_fn(authorize)),
         )
