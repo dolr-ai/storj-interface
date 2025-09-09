@@ -50,8 +50,9 @@ jobs:
       - name: Ensure metadata exists
         run: |
           sleep 1s
-          uplink meta get --access="$ACCESS" "sj://yral-videos/$HURL_publisher/$HURL_video_id.mp4"
-          uplink meta get --access="$ACCESS" "sj://yral-videos/$HURL_publisher/$HURL_video_id.mp4" | jq -e 'select(.test == "value")'
+          # SFW videos now go to S3, check metadata in NSFW bucket (Storj)
+          uplink meta get --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4"
+          uplink meta get --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4" | jq -e 'select(.test == "value")'
 
       - name: Setup for move2nsfw tests
         run: |
@@ -69,8 +70,7 @@ jobs:
       # HLS Tests
       - name: Clean up any existing HLS test files
         run: |
-          # Clean up SFW bucket
-          uplink rm --recursive --access="$ACCESS" "sj://yral-videos/$HURL_hls_video_id/hls/" || true
+          # SFW HLS files now go to S3, skip cleaning SFW bucket in Storj
           # Clean up NSFW bucket
           uplink rm --recursive --access="$ACCESS" "sj://yral-nsfw-videos/${HURL_hls_video_id}_nsfw/hls/" || true
 
@@ -87,16 +87,7 @@ jobs:
           # Wait for uploads to complete
           sleep 5
           
-          # List all files in SFW bucket
-          echo "Files in SFW bucket:"
-          uplink ls --recursive --access="$ACCESS" "sj://yral-videos/$HURL_hls_video_id/hls/"
-          
-          # Count files - should have 7 files (1 master + 3 playlists + 3 ts files)
-          FILE_COUNT=$(uplink ls --recursive --access="$ACCESS" "sj://yral-videos/$HURL_hls_video_id/hls/" | grep -c "^OBJ")
-          if [ "$FILE_COUNT" -ne 7 ]; then
-            echo "ERROR: Expected 7 files in SFW bucket, found $FILE_COUNT"
-            exit 1
-          fi
+          # SFW HLS files now go to S3, skip verification in Storj SFW bucket
           
           # Check NSFW bucket has at least master.m3u8
           echo "Files in NSFW bucket:"
@@ -105,7 +96,36 @@ jobs:
       - name: Clean up HLS test files
         if: always()
         run: |
-          # Clean up SFW bucket
-          uplink rm --recursive --access="$ACCESS" "sj://yral-videos/$HURL_hls_video_id/hls/" || true
+          # SFW HLS files now go to S3, skip cleaning SFW bucket in Storj
           # Clean up NSFW bucket
           uplink rm --recursive --access="$ACCESS" "sj://yral-nsfw-videos/${HURL_hls_video_id}_nsfw/hls/" || true
+      
+      - name: Clean up S3 test files
+        if: always()
+        run: |
+          # Only run if S3 credentials are configured
+          if [ -n "${{ secrets.HETZNER_S3_ACCESS_KEY }}" ]; then
+            # Install rclone
+            curl https://rclone.org/install.sh | sudo bash || true
+            
+            # Create rclone config for cleanup
+            cat > /tmp/rclone-cleanup.conf << EOF
+          [hetzner-s3]
+          type = s3
+          provider = Other
+          access_key_id = ${{ secrets.HETZNER_S3_ACCESS_KEY }}
+          secret_access_key = ${{ secrets.HETZNER_S3_SECRET_KEY }}
+          endpoint = ${{ secrets.HETZNER_S3_ENDPOINT }}
+          region = hel1
+          EOF
+            
+            # Clean up test videos from S3
+            echo "Cleaning up S3 test files..."
+            rclone delete "hetzner-s3:${{ secrets.HETZNER_S3_BUCKET }}/$HURL_publisher/$HURL_video_id.mp4" --config /tmp/rclone-cleanup.conf || true
+            rclone delete "hetzner-s3:${{ secrets.HETZNER_S3_BUCKET }}/$HURL_hls_video_id/" --config /tmp/rclone-cleanup.conf --rmdirs || true
+            
+            # Clean up config
+            rm -f /tmp/rclone-cleanup.conf
+          else
+            echo "S3 credentials not configured, skipping S3 cleanup"
+          fi
