@@ -49,13 +49,10 @@ pub async fn handler(
     // Download video from S3 (SFW storage)
     let s3_key = format!("{}/{}.mp4", request.publisher_user_id, request.video_id);
 
-    println!("Moving video from S3 to Storj NSFW bucket: {}", s3_key);
+    println!("Moving video from S3 to Storj NSFW bucket: {s3_key}");
 
     // Download from S3
-    let video_data = s3_client
-        .download_video(&s3_key)
-        .await
-        .map_err(|e| Error::S3(e))?;
+    let video_data = s3_client.download_video(&s3_key).await.map_err(Error::S3)?;
 
     // Upload to Storj NSFW bucket
     let dest = format!(

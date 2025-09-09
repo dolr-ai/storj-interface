@@ -68,8 +68,7 @@ pub async fn handler(
     }): Json<Args>,
 ) -> Result<impl IntoResponse, Error> {
     let source = format!(
-        "https://customer-2p3jflss4r4hmpnz.cloudflarestream.com/{}/downloads/default.mp4",
-        video_id
+        "https://customer-2p3jflss4r4hmpnz.cloudflarestream.com/{video_id}/downloads/default.mp4",
     );
 
     let req = reqwest::get(source).await?;
@@ -113,7 +112,7 @@ pub async fn handler(
         }
     } else {
         // Use Hetzner S3 for SFW videos
-        let key = format!("{}/{}.mp4", publisher_user_id, video_id);
+        let key = format!("{publisher_user_id}/{video_id}.mp4");
         let stream = req.bytes_stream();
 
         // Convert metadata to HashMap for S3
