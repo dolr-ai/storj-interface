@@ -1,6 +1,5 @@
-use aws_config::meta::region::RegionProviderChain;
-use aws_config::Region;
-use aws_sdk_s3::config::Credentials;
+use aws_config::BehaviorVersion;
+use aws_sdk_s3::config::{Credentials, Region};
 use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::{Client, Config};
 use bytes::Bytes;
@@ -20,9 +19,6 @@ pub struct S3Client {
 
 impl S3Client {
     pub async fn new() -> Self {
-        let region_provider =
-            RegionProviderChain::default_provider().or_else(Region::new(HETZNER_S3_REGION.clone()));
-
         let creds = Credentials::new(
             HETZNER_S3_ACCESS_KEY.as_str(),
             HETZNER_S3_SECRET_KEY.as_str(),
@@ -32,12 +28,8 @@ impl S3Client {
         );
 
         let config = Config::builder()
-            .region(
-                region_provider
-                    .region()
-                    .await
-                    .unwrap_or_else(|| Region::new("eu-central")),
-            )
+            .behavior_version(BehaviorVersion::latest())
+            .region(Region::new(HETZNER_S3_REGION.clone()))
             .endpoint_url(HETZNER_S3_ENDPOINT.as_str())
             .credentials_provider(creds)
             .force_path_style(true)
