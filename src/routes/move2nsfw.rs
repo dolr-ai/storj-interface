@@ -52,7 +52,10 @@ pub async fn handler(
     println!("Moving video from S3 to Storj NSFW bucket: {s3_key}");
 
     // Download from S3
-    let video_data = s3_client.download_video(&s3_key).await.map_err(Error::S3)?;
+    let video_data = s3_client.download_video(&s3_key).await.map_err(|e| {
+        eprintln!("S3 download error for {}: {}", s3_key, e);
+        Error::S3(e)
+    })?;
 
     // Upload to Storj NSFW bucket
     let dest = format!(
@@ -94,10 +97,10 @@ pub async fn handler(
     }
 
     // Delete from S3 after successful move
-    s3_client
-        .delete_video(&s3_key)
-        .await
-        .map_err(|e| Error::S3(e.to_string()))?;
+    s3_client.delete_video(&s3_key).await.map_err(|e| {
+        eprintln!("S3 delete error for {}: {}", s3_key, e);
+        Error::S3(e.to_string())
+    })?;
 
     Ok((
         StatusCode::OK,

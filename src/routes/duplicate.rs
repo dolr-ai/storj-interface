@@ -2,7 +2,7 @@ use axum::{extract::State, response::IntoResponse, Json};
 use futures_util::StreamExt;
 use reqwest::StatusCode;
 use serde_json::json;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::process::Stdio;
 use storj_interface::duplicate::Args;
 use tokio::io::AsyncWriteExt;
@@ -58,6 +58,74 @@ impl IntoResponse for Error {
     }
 }
 
+async fn upload_to_storj(
+    publisher_user_id: &str,
+    video_id: &str,
+    metadata: &BTreeMap<String, String>,
+    mut stream: impl futures_util::Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Unpin,
+) -> Result<(), Error> {
+    let bucket = YRAL_NSFW_VIDEOS.as_str();
+    let grant = ACCESS_GRANT_NSFW.as_str();
+    let dest = format!("sj://{bucket}/{publisher_user_id}/{video_id}.mp4");
+
+    let metadata_str = serde_json::to_string(metadata)
+        .expect("serialization to go through as we are guaranteed utf-8");
+
+    let mut child = Command::new("uplink")
+        .args([
+            "cp",
+            "--interactive=false",
+            "--analytics=false",
+            "--progress=false",
+            format!("--metadata={metadata_str}").as_str(),
+            "--access",
+            grant,
+            "-",
+            dest.as_str(),
+        ])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .spawn()?;
+
+    let mut pipe = child.stdin.take().expect("Stdin pipe to be opened for us");
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        pipe.write_all(&chunk).await?;
+    }
+
+    Ok(())
+}
+
+async fn upload_to_s3(
+    s3_client: &S3Client,
+    publisher_user_id: &str,
+    video_id: &str,
+    metadata: &BTreeMap<String, String>,
+    stream: impl futures_util::Stream<Item = Result<bytes::Bytes, reqwest::Error>>,
+) -> Result<(), Error> {
+    let key = format!("{publisher_user_id}/{video_id}.mp4");
+
+    // Convert metadata to HashMap for S3
+    let mut s3_metadata = HashMap::new();
+    for (k, v) in metadata.iter() {
+        s3_metadata.insert(k.clone(), v.clone());
+    }
+
+    s3_client
+        .upload_video_stream(&key, stream, &s3_metadata)
+        .await
+        .map_err(|e| {
+            eprintln!(
+                "S3 upload error for {}/{}: {}",
+                publisher_user_id, video_id, e
+            );
+            Error::S3(e.to_string())
+        })?;
+
+    Ok(())
+}
+
 pub async fn handler(
     State(s3_client): State<S3Client>,
     Json(Args {
@@ -79,52 +147,16 @@ pub async fn handler(
     }
 
     if is_nsfw {
-        // Use Storj for NSFW videos
-        let bucket = YRAL_NSFW_VIDEOS.as_str();
-        let grant = ACCESS_GRANT_NSFW.as_str();
-        let dest = format!("sj://{bucket}/{publisher_user_id}/{video_id}.mp4");
-
-        let mut stream = req.bytes_stream();
-        let metadata_str = serde_json::to_string(&metadata)
-            .expect("serialization to go through as we are guaranteed utf-8");
-
-        let mut child = Command::new("uplink")
-            .args([
-                "cp",
-                "--interactive=false",
-                "--analytics=false",
-                "--progress=false",
-                format!("--metadata={metadata_str}").as_str(),
-                "--access",
-                grant,
-                "-",
-                dest.as_str(),
-            ])
-            .stdin(Stdio::piped())
-            .stdout(Stdio::null())
-            .spawn()?;
-
-        let mut pipe = child.stdin.take().expect("Stdin pipe to be opened for us");
-
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk?;
-            pipe.write_all(&chunk).await?;
-        }
+        upload_to_storj(&publisher_user_id, &video_id, &metadata, req.bytes_stream()).await?
     } else {
-        // Use Hetzner S3 for SFW videos
-        let key = format!("{publisher_user_id}/{video_id}.mp4");
-        let stream = req.bytes_stream();
-
-        // Convert metadata to HashMap for S3
-        let mut s3_metadata = HashMap::new();
-        for (k, v) in metadata.iter() {
-            s3_metadata.insert(k.clone(), v.clone());
-        }
-
-        s3_client
-            .upload_video_stream(&key, stream, &s3_metadata)
-            .await
-            .map_err(|e| Error::S3(e.to_string()))?;
+        upload_to_s3(
+            &s3_client,
+            &publisher_user_id,
+            &video_id,
+            &metadata,
+            req.bytes_stream(),
+        )
+        .await?
     }
 
     Ok(())

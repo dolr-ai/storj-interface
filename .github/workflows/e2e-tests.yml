@@ -102,30 +102,12 @@ jobs:
       
       - name: Clean up S3 test files
         if: always()
+        env:
+          HETZNER_S3_ACCESS_KEY: ${{ secrets.HETZNER_S3_ACCESS_KEY }}
+          HETZNER_S3_SECRET_KEY: ${{ secrets.HETZNER_S3_SECRET_KEY }}
+          HETZNER_S3_ENDPOINT: ${{ secrets.HETZNER_S3_ENDPOINT }}
+          HETZNER_S3_BUCKET: ${{ secrets.HETZNER_S3_BUCKET }}
         run: |
-          # Only run if S3 credentials are configured
-          if [ -n "${{ secrets.HETZNER_S3_ACCESS_KEY }}" ]; then
-            # Install rclone
-            curl https://rclone.org/install.sh | sudo bash || true
-            
-            # Create rclone config for cleanup
-            cat > /tmp/rclone-cleanup.conf << EOF
-          [hetzner-s3]
-          type = s3
-          provider = Other
-          access_key_id = ${{ secrets.HETZNER_S3_ACCESS_KEY }}
-          secret_access_key = ${{ secrets.HETZNER_S3_SECRET_KEY }}
-          endpoint = ${{ secrets.HETZNER_S3_ENDPOINT }}
-          region = hel1
-          EOF
-            
-            # Clean up test videos from S3
-            echo "Cleaning up S3 test files..."
-            rclone delete "hetzner-s3:${{ secrets.HETZNER_S3_BUCKET }}/$HURL_publisher/$HURL_video_id.mp4" --config /tmp/rclone-cleanup.conf || true
-            rclone delete "hetzner-s3:${{ secrets.HETZNER_S3_BUCKET }}/$HURL_hls_video_id/" --config /tmp/rclone-cleanup.conf --rmdirs || true
-            
-            # Clean up config
-            rm -f /tmp/rclone-cleanup.conf
-          else
-            echo "S3 credentials not configured, skipping S3 cleanup"
-          fi
+          # Use the cleanup script
+          chmod +x scripts/cleanup-s3-test-ci.sh
+          ./scripts/cleanup-s3-test-ci.sh
