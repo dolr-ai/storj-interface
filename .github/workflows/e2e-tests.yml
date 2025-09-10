@@ -50,8 +50,9 @@ jobs:
       - name: Ensure metadata exists
         run: |
           sleep 1s
-          uplink meta get --access="$ACCESS" "sj://yral-videos/$HURL_publisher/$HURL_video_id.mp4"
-          uplink meta get --access="$ACCESS" "sj://yral-videos/$HURL_publisher/$HURL_video_id.mp4" | jq -e 'select(.test == "value")'
+          # SFW videos now go to S3, check metadata in NSFW bucket (Storj)
+          uplink meta get --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4"
+          uplink meta get --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4" | jq -e 'select(.test == "value")'
 
       - name: Setup for move2nsfw tests
         run: |
@@ -69,8 +70,7 @@ jobs:
       # HLS Tests
       - name: Clean up any existing HLS test files
         run: |
-          # Clean up SFW bucket
-          uplink rm --recursive --access="$ACCESS" "sj://yral-videos/$HURL_hls_video_id/hls/" || true
+          # SFW HLS files now go to S3, skip cleaning SFW bucket in Storj
           # Clean up NSFW bucket
           uplink rm --recursive --access="$ACCESS" "sj://yral-nsfw-videos/${HURL_hls_video_id}_nsfw/hls/" || true
 
@@ -87,16 +87,7 @@ jobs:
           # Wait for uploads to complete
           sleep 5
           
-          # List all files in SFW bucket
-          echo "Files in SFW bucket:"
-          uplink ls --recursive --access="$ACCESS" "sj://yral-videos/$HURL_hls_video_id/hls/"
-          
-          # Count files - should have 7 files (1 master + 3 playlists + 3 ts files)
-          FILE_COUNT=$(uplink ls --recursive --access="$ACCESS" "sj://yral-videos/$HURL_hls_video_id/hls/" | grep -c "^OBJ")
-          if [ "$FILE_COUNT" -ne 7 ]; then
-            echo "ERROR: Expected 7 files in SFW bucket, found $FILE_COUNT"
-            exit 1
-          fi
+          # SFW HLS files now go to S3, skip verification in Storj SFW bucket
           
           # Check NSFW bucket has at least master.m3u8
           echo "Files in NSFW bucket:"
@@ -105,7 +96,18 @@ jobs:
       - name: Clean up HLS test files
         if: always()
         run: |
-          # Clean up SFW bucket
-          uplink rm --recursive --access="$ACCESS" "sj://yral-videos/$HURL_hls_video_id/hls/" || true
+          # SFW HLS files now go to S3, skip cleaning SFW bucket in Storj
           # Clean up NSFW bucket
           uplink rm --recursive --access="$ACCESS" "sj://yral-nsfw-videos/${HURL_hls_video_id}_nsfw/hls/" || true
+      
+      - name: Clean up S3 test files
+        if: always()
+        env:
+          HETZNER_S3_ACCESS_KEY: ${{ secrets.HETZNER_S3_ACCESS_KEY }}
+          HETZNER_S3_SECRET_KEY: ${{ secrets.HETZNER_S3_SECRET_KEY }}
+          HETZNER_S3_ENDPOINT: ${{ secrets.HETZNER_S3_ENDPOINT }}
+          HETZNER_S3_BUCKET: ${{ secrets.HETZNER_S3_BUCKET }}
+        run: |
+          # Use the cleanup script
+          chmod +x scripts/cleanup-s3-test-ci.sh
+          ./scripts/cleanup-s3-test-ci.sh

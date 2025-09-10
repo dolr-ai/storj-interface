@@ -71,3 +71,7 @@ For example, https://github.com/storj/gateway-st/issues/89 breaks compatibility 
 ## Why not use uplink crate
 
 Uplink crate, as of writing this documentation, doesn't compile for `wasm32-unknown-unknown`.
+
+
+## NOTE: Hetzner ie sfw upload is indirectly tested via move2nsfw test (the test that copies from hetzner to storj and then verifies on storj)
+
