@@ -44,8 +44,12 @@ fn duplicate_stream(
             match chunk {
                 Ok(bytes) => {
                     let bytes_clone = bytes.clone();
-                    let _ = tx1.send(Ok(bytes)).await;
-                    let _ = tx2.send(Ok(bytes_clone)).await;
+                    let _ = tx1.try_send(Ok(bytes)).inspect_err(|e| {
+                        eprintln!("Failed to send to first stream: {e}");
+                    });
+                    let _ = tx2.try_send(Ok(bytes_clone)).inspect_err(|e| {
+                        eprintln!("Failed to send to second stream: {e}");
+                    });
                 }
                 Err(e) => {
                     // Log the error and stop processing
@@ -180,26 +184,17 @@ pub async fn handler(
         return Err(Error::Clouflare(status));
     }
 
-    if is_nsfw {
-        upload_to_storj(
-            &publisher_user_id,
-            &video_id,
-            &metadata,
-            req.bytes_stream(),
-            true,
-        )
-        .await?
-    } else {
+    // Always upload to Storj
+    if !is_nsfw {
         // For SFW videos, duplicate the stream and upload to both Storj and S3 concurrently
         let (storj_stream, s3_stream) = duplicate_stream(req.bytes_stream(), 64);
 
-        // Run both uploads concurrently
         let storj_upload = upload_to_storj(
             &publisher_user_id,
             &video_id,
             &metadata,
             Box::pin(storj_stream),
-            false,
+            is_nsfw,
         );
         let s3_upload = upload_to_s3(
             &s3_client,
@@ -210,6 +205,15 @@ pub async fn handler(
         );
 
         tokio::try_join!(storj_upload, s3_upload)?;
+    } else {
+        upload_to_storj(
+            &publisher_user_id,
+            &video_id,
+            &metadata,
+            req.bytes_stream(),
+            is_nsfw,
+        )
+        .await?;
     }
 
     Ok(())
