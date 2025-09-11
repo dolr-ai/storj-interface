@@ -8,8 +8,9 @@ use axum::{
     Router,
 };
 use consts::{
-    ACCESS_GRANT_NSFW, HETZNER_S3_ACCESS_KEY, HETZNER_S3_BUCKET, HETZNER_S3_ENDPOINT,
-    HETZNER_S3_REGION, HETZNER_S3_SECRET_KEY, SERVICE_SECRET_TOKEN,
+    ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, HETZNER_S3_ACCESS_KEY, HETZNER_S3_BUCKET,
+    HETZNER_S3_ENDPOINT, HETZNER_S3_REGION, HETZNER_S3_SECRET_KEY, SERVICE_SECRET_TOKEN,
+    YRAL_VIDEOS,
 };
 use once_cell::sync::Lazy;
 use reqwest::{header::AUTHORIZATION, StatusCode};
@@ -22,8 +23,10 @@ mod s3_client;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Force loading of Storj configuration (NSFW only)
+    // Force loading of Storj configuration
+    Lazy::force(&ACCESS_GRANT_SFW);
     Lazy::force(&ACCESS_GRANT_NSFW);
+    Lazy::force(&YRAL_VIDEOS);
     Lazy::force(&SERVICE_SECRET_TOKEN);
 
     // Force loading of Hetzner S3 configuration
