@@ -1,6 +1,17 @@
 use once_cell::sync::Lazy;
 
-// Storj configuration (for NSFW videos only)
+// Storj configuration
+pub static YRAL_VIDEOS: Lazy<String> = Lazy::new(|| {
+    const FALLBACK: &str = "yral-videos";
+    std::env::var("SFW_BUCKET")
+        .inspect_err(|err| println!("Using fallback for SFW_BUCKET because {err}"))
+        .unwrap_or_else(|_| FALLBACK.into())
+});
+pub static ACCESS_GRANT_SFW: Lazy<String> = Lazy::new(|| {
+    std::env::var("STORJ_ACCESS_GRANT_SFW")
+        .expect("Access grant to be present: STORJ_ACCESS_GRANT_SFW")
+});
+
 pub static YRAL_NSFW_VIDEOS: Lazy<String> = Lazy::new(|| {
     const FALLBACK: &str = "yral-nsfw-videos";
     std::env::var("NSFW_BUCKET")

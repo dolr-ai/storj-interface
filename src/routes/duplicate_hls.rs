@@ -14,7 +14,7 @@ use std::process::Stdio;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
-use crate::consts::{ACCESS_GRANT_NSFW, YRAL_NSFW_VIDEOS};
+use crate::consts::{ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, YRAL_NSFW_VIDEOS, YRAL_VIDEOS};
 use crate::s3_client::S3Client;
 
 #[derive(thiserror::Error, Debug)]
@@ -70,9 +70,13 @@ async fn upload_hls_to_storj(
     hls_file_name: &str,
     metadata: &BTreeMap<String, String>,
     body_data: &[u8],
+    is_nsfw: bool,
 ) -> Result<(), Error> {
-    let bucket = YRAL_NSFW_VIDEOS.as_str();
-    let grant = ACCESS_GRANT_NSFW.as_str();
+    let (bucket, grant) = if is_nsfw {
+        (YRAL_NSFW_VIDEOS.as_str(), ACCESS_GRANT_NSFW.as_str())
+    } else {
+        (YRAL_VIDEOS.as_str(), ACCESS_GRANT_SFW.as_str())
+    };
     let dest = format!("sj://{bucket}/{video_id}/hls/{hls_file_name}");
 
     let metadata_str = serde_json::to_string(metadata)
@@ -100,6 +104,13 @@ async fn upload_hls_to_storj(
     pipe.flush().await?;
     drop(pipe); // Close stdin to signal EOF
 
+    let status = child.wait().await?;
+    if !status.success() {
+        return Err(Error::Io(std::io::Error::other(format!(
+            "uplink command failed with status: {status}"
+        ))));
+    }
+
     Ok(())
 }
 
@@ -122,10 +133,7 @@ async fn upload_hls_to_s3(
         .upload_hls_segment(&key, body_data, &s3_metadata)
         .await
         .map_err(|e| {
-            eprintln!(
-                "S3 HLS upload error for {}/{}: {}",
-                video_id, hls_file_name, e
-            );
+            eprintln!("S3 HLS upload error for {video_id}/{hls_file_name}: {e}",);
             Error::S3(e.to_string())
         })?;
 
@@ -146,17 +154,28 @@ pub async fn handler(
             &params.hls_file_name,
             &params.metadata,
             &body_data,
+            true,
         )
         .await?
     } else {
-        upload_hls_to_s3(
+        let body_data_clone = body_data.clone();
+
+        let storj_upload = upload_hls_to_storj(
+            &params.video_id,
+            &params.hls_file_name,
+            &params.metadata,
+            &body_data,
+            false,
+        );
+        let s3_upload = upload_hls_to_s3(
             &s3_client,
             &params.video_id,
             &params.hls_file_name,
             &params.metadata,
-            body_data,
-        )
-        .await?
+            body_data_clone,
+        );
+
+        tokio::try_join!(storj_upload, s3_upload)?;
     }
 
     Ok(())

@@ -50,7 +50,10 @@ jobs:
       - name: Ensure metadata exists
         run: |
           sleep 1s
-          # SFW videos now go to S3, check metadata in NSFW bucket (Storj)
+          # Check metadata for both SFW and NSFW videos in Storj
+          # SFW videos now go to both Storj and Hetzner
+          uplink meta get --access="$ACCESS" "sj://yral-videos/$HURL_publisher/$HURL_video_id.mp4"
+          uplink meta get --access="$ACCESS" "sj://yral-videos/$HURL_publisher/$HURL_video_id.mp4" | jq -e 'select(.test == "value")'
           uplink meta get --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4"
           uplink meta get --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4" | jq -e 'select(.test == "value")'
 
@@ -65,13 +68,15 @@ jobs:
 
       - name: Clean up buckets
         run: |
+          # Clean up both SFW and NSFW videos from Storj
+          uplink rm --access="$ACCESS" "sj://yral-videos/$HURL_publisher/$HURL_video_id.mp4" || true
           uplink rm --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4"
 
       # HLS Tests
       - name: Clean up any existing HLS test files
         run: |
-          # SFW HLS files now go to S3, skip cleaning SFW bucket in Storj
-          # Clean up NSFW bucket
+          # Clean up both SFW and NSFW HLS files from Storj
+          uplink rm --recursive --access="$ACCESS" "sj://yral-videos/${HURL_hls_video_id}/hls/" || true
           uplink rm --recursive --access="$ACCESS" "sj://yral-nsfw-videos/${HURL_hls_video_id}_nsfw/hls/" || true
 
       - name: Run HLS duplication tests
@@ -87,16 +92,18 @@ jobs:
           # Wait for uploads to complete
           sleep 5
           
-          # SFW HLS files now go to S3, skip verification in Storj SFW bucket
+          # Check both SFW and NSFW buckets in Storj
+          echo "Files in SFW bucket:"
+          uplink ls --recursive --access="$ACCESS" "sj://yral-videos/${HURL_hls_video_id}/hls/"
           
-          # Check NSFW bucket has at least master.m3u8
           echo "Files in NSFW bucket:"
           uplink ls --recursive --access="$ACCESS" "sj://yral-nsfw-videos/${HURL_hls_video_id}_nsfw/hls/"
 
       - name: Clean up HLS test files
         if: always()
         run: |
-          # SFW HLS files now go to S3, skip cleaning SFW bucket in Storj
+          # Clean up both SFW and NSFW HLS files from Storj
+          uplink rm --recursive --access="$ACCESS" "sj://yral-videos/${HURL_hls_video_id}/hls/" || true
           # Clean up NSFW bucket
           uplink rm --recursive --access="$ACCESS" "sj://yral-nsfw-videos/${HURL_hls_video_id}_nsfw/hls/" || true
       
