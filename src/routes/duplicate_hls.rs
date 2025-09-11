@@ -11,6 +11,7 @@ use serde::Deserialize;
 use serde_json::json;
 use std::collections::{BTreeMap, HashMap};
 use std::process::Stdio;
+use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
@@ -148,39 +149,36 @@ pub async fn handler(
     // Use the cleaner collection method
     let body_data = body.collect().await.map_err(Error::Hyper)?.to_bytes();
 
+    let params = Arc::new(params);
+    let body_data = Arc::new(body_data);
+
     let mut join_set = tokio::task::JoinSet::new();
 
     // Always upload to Storj
-    let video_id = params.video_id.clone();
-    let hls_file_name = params.hls_file_name.clone();
-    let metadata = params.metadata.clone();
-    let body_data_storj = body_data.to_vec();
-    let is_nsfw = params.is_nsfw;
-    join_set.spawn(async move {
-        upload_hls_to_storj(
-            &video_id,
-            &hls_file_name,
-            &metadata,
-            &body_data_storj,
-            is_nsfw,
-        )
-        .await
-    });
+    {
+        let params = params.clone();
+        let body_data = body_data.clone();
+        join_set.spawn(async move {
+            upload_hls_to_storj(
+                &params.video_id,
+                &params.hls_file_name,
+                &params.metadata,
+                &body_data.to_vec(),
+                params.is_nsfw,
+            )
+            .await
+        });
+    }
 
     // Additionally upload to S3 for SFW videos
     if !params.is_nsfw {
-        let video_id = params.video_id.clone();
-        let hls_file_name = params.hls_file_name.clone();
-        let metadata = params.metadata.clone();
-        let body_data_s3 = body_data.clone();
-        let s3_client = s3_client.clone();
         join_set.spawn(async move {
             upload_hls_to_s3(
                 &s3_client,
-                &video_id,
-                &hls_file_name,
-                &metadata,
-                &body_data_s3,
+                &params.video_id,
+                &params.hls_file_name,
+                &params.metadata,
+                &body_data,
             )
             .await
         });
