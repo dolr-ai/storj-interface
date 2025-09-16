@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - feat/create-release-with-binary
 
 # When deployment at a time
 concurrency:
@@ -16,7 +15,7 @@ jobs:
     with:
       publish-artifact: true
 
-  release:
+  release_binary:
     needs: build_binary
     permissions:
       contents: write
@@ -41,7 +40,7 @@ jobs:
           fail_on_unmatched_files: true
           tag_name: ${{ env.RELEASE_NAME }}
 
-  publish:
+  publish_image:
     needs: build_binary
     permissions:
       contents: read
