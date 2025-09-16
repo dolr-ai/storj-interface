@@ -1,5 +1,5 @@
 use axum::{extract::State, response::IntoResponse, Json};
-use futures_util::{Stream, StreamExt};
+use futures_util::StreamExt;
 use reqwest::StatusCode;
 use serde_json::json;
 use std::collections::{BTreeMap, HashMap};
@@ -7,8 +7,6 @@ use std::process::Stdio;
 use storj_interface::duplicate::Args;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
-use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
 
 use crate::consts::{ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, YRAL_NSFW_VIDEOS, YRAL_VIDEOS};
 use crate::s3_client::S3Client;
@@ -26,41 +24,6 @@ pub enum Error {
 
     #[error("S3 operation failed: {0}")]
     S3(String),
-}
-
-/// Duplicates a stream into two separate streams that can be consumed independently
-fn duplicate_stream(
-    mut stream: impl Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Unpin + Send + 'static,
-    buffer_size: usize,
-) -> (
-    impl Stream<Item = Result<bytes::Bytes, reqwest::Error>>,
-    impl Stream<Item = Result<bytes::Bytes, reqwest::Error>>,
-) {
-    let (tx1, rx1) = mpsc::channel::<Result<bytes::Bytes, reqwest::Error>>(buffer_size);
-    let (tx2, rx2) = mpsc::channel::<Result<bytes::Bytes, reqwest::Error>>(buffer_size);
-
-    tokio::spawn(async move {
-        while let Some(chunk) = stream.next().await {
-            match chunk {
-                Ok(bytes) => {
-                    let bytes_clone = bytes.clone();
-                    let _ = tx1.try_send(Ok(bytes)).inspect_err(|e| {
-                        eprintln!("Failed to send to first stream: {e}");
-                    });
-                    let _ = tx2.try_send(Ok(bytes_clone)).inspect_err(|e| {
-                        eprintln!("Failed to send to second stream: {e}");
-                    });
-                }
-                Err(e) => {
-                    // Log the error and stop processing
-                    eprintln!("Stream error: {e}");
-                    break;
-                }
-            }
-        }
-    });
-
-    (ReceiverStream::new(rx1), ReceiverStream::new(rx2))
 }
 
 impl IntoResponse for Error {
@@ -134,6 +97,15 @@ async fn upload_to_storj(
         let chunk = chunk?;
         pipe.write_all(&chunk).await?;
     }
+    
+    drop(pipe);
+    let status = child.wait().await?;
+    if !status.success() {
+        return Err(Error::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("uplink command failed with status: {}", status),
+        )));
+    }
 
     Ok(())
 }
@@ -184,11 +156,16 @@ pub async fn handler(
         return Err(Error::Clouflare(status));
     }
 
-    // Always upload to Storj
     if !is_nsfw {
-        // For SFW videos, duplicate the stream and upload to both Storj and S3 concurrently
-        let (storj_stream, s3_stream) = duplicate_stream(req.bytes_stream(), 64);
-
+        // Collect all bytes into memory for SFW videos as we need to upload to both Storj and S3
+        // Stream clone aint working
+        let body = req.bytes().await?;
+        let body_clone = body.clone();
+        
+        // Create streams from the collected bytes
+        let storj_stream = futures_util::stream::once(async move { Ok(body) });
+        let s3_stream = futures_util::stream::once(async move { Ok(body_clone) });
+        
         let storj_upload = upload_to_storj(
             &publisher_user_id,
             &video_id,
