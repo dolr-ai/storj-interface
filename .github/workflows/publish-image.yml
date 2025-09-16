@@ -4,11 +4,36 @@ on:
     branches:
       - main
 
+# When deployment at a time
+concurrency:
+  group: production
+  cancel-in-progress: true
+
 jobs:
   build_binary:
     uses: ./.github/workflows/build-binary.yml
     with:
       publish-artifact: true
+
+  release:
+    needs: build_binary
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: built-binary
+      - run: |
+          chmod +x storj-interface
+      - name: Upload binary as latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: storj-interface
+          make_latest: true
 
   publish:
     needs: build_binary
@@ -18,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Download build
         uses: actions/download-artifact@v4
         with:
