@@ -101,10 +101,9 @@ async fn upload_to_storj(
     drop(pipe);
     let status = child.wait().await?;
     if !status.success() {
-        return Err(Error::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("uplink command failed with status: {}", status),
-        )));
+        return Err(Error::Io(std::io::Error::other(format!(
+            "uplink command failed with status: {status}"
+        ))));
     }
 
     Ok(())
