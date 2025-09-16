@@ -1,0 +1,25 @@
+[Unit]
+Description=Service that prints systemd credentials
+After=network.target
+
+[Service]
+Type=exec
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/storj-interface-entrypoint.sh
+LoadCredentialEncrypted=STORJ_ACCESS_GRANT_SFW:/etc/credstore/STORJ_ACCESS_GRANT_SFW.cred
+LoadCredentialEncrypted=SFW_BUCKET:/etc/credstore/SFW_BUCKET.cred
+LoadCredentialEncrypted=STORJ_ACCESS_GRANT_NSFW:/etc/credstore/STORJ_ACCESS_GRANT_NSFW.cred
+LoadCredentialEncrypted=NSFW_BUCKET:/etc/credstore/NSFW_BUCKET.cred
+LoadCredentialEncrypted=HETZNER_S3_ENDPOINT:/etc/credstore/HETZNER_S3_ENDPOINT.cred
+LoadCredentialEncrypted=HETZNER_S3_BUCKET:/etc/credstore/HETZNER_S3_BUCKET.cred
+LoadCredentialEncrypted=HETZNER_S3_ACCESS_KEY:/etc/credstore/HETZNER_S3_ACCESS_KEY.cred
+LoadCredentialEncrypted=HETZNER_S3_SECRET_KEY:/etc/credstore/HETZNER_S3_SECRET_KEY.cred
+LoadCredentialEncrypted=HETZNER_S3_REGION:/etc/credstore/HETZNER_S3_REGION.cred
+LoadCredentialEncrypted=SERVICE_SECRET_TOKEN:/etc/credstore/SERVICE_SECRET_TOKEN.cred
+User=server
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+
