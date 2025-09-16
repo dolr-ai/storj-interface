@@ -97,7 +97,7 @@ async fn upload_to_storj(
         let chunk = chunk?;
         pipe.write_all(&chunk).await?;
     }
-    
+
     drop(pipe);
     let status = child.wait().await?;
     if !status.success() {
@@ -161,11 +161,11 @@ pub async fn handler(
         // Stream clone aint working
         let body = req.bytes().await?;
         let body_clone = body.clone();
-        
+
         // Create streams from the collected bytes
         let storj_stream = futures_util::stream::once(async move { Ok(body) });
         let s3_stream = futures_util::stream::once(async move { Ok(body_clone) });
-        
+
         let storj_upload = upload_to_storj(
             &publisher_user_id,
             &video_id,
