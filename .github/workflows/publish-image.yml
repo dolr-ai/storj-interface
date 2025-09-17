@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - feat/create-release-with-binary
 
 # When deployment at a time
 concurrency:
@@ -39,6 +40,15 @@ jobs:
           make_latest: true
           fail_on_unmatched_files: true
           tag_name: ${{ env.RELEASE_NAME }}
+      - name: Setup private key to hetzner instance
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
+      - name: Request update and restart
+        run: |
+          # No command needs to be (or can be) specified,
+          # the server figures out what needs to be done
+          ssh root@storj-interface.yral.com
 
   publish_image:
     needs: build_binary
