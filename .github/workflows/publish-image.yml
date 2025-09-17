@@ -24,22 +24,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download build
-        uses: actions/download-artifact@v4
-        with:
-          name: built-binary
-      - run: |
-          chmod +x storj-interface
-      - name: Generate release name
-        run: echo "RELEASE_NAME=$(date +'%Y%m%d')-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      # - name: Download build
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: built-binary
+      # - run: |
+      #     chmod +x storj-interface
+      # - name: Generate release name
+      #   run: echo "RELEASE_NAME=$(date +'%Y%m%d')-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
-      - name: Upload binary as latest release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: storj-interface
-          make_latest: true
-          fail_on_unmatched_files: true
-          tag_name: ${{ env.RELEASE_NAME }}
+      # - name: Upload binary as latest release
+      #   uses: softprops/action-gh-release@v2
+      #   with:
+      #     files: storj-interface
+      #     make_latest: true
+      #     fail_on_unmatched_files: true
+      #     tag_name: ${{ env.RELEASE_NAME }}
       - name: Request update and restart
         run: |
           # No command needs to be (or can be) specified,
