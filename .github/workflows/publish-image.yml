@@ -40,11 +40,10 @@ jobs:
           make_latest: true
           fail_on_unmatched_files: true
           tag_name: ${{ env.RELEASE_NAME }}
-      - name: Setup private key to hetzner instance
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
-      - run: ls .ssh/
+      - name: Setup private key
+        run: |
+          mkdir ~/.ssh/
+          echo "${{ secrets.HETZNER_SSH_PRIVATE_KEY }}" >> ~/.ssh/id_ed25519
       - name: Request update and restart
         run: |
           # No command needs to be (or can be) specified,
