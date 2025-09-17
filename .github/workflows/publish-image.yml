@@ -40,17 +40,13 @@ jobs:
           make_latest: true
           fail_on_unmatched_files: true
           tag_name: ${{ env.RELEASE_NAME }}
-      - name: Setup private key
-        run: |
-          mkdir ~/.ssh/
-          echo "${{ secrets.HETZNER_SSH_PRIVATE_KEY }}" >> ~/.ssh/id_ed25519
-      - name: Confirm key
-        run: ssh-keygen -y -e -f ~/.ssh/id_ed25519
       - name: Request update and restart
         run: |
           # No command needs to be (or can be) specified,
           # the server figures out what needs to be done
-          ssh -i ~/.ssh/id_ed25519 root@storj-interface.yral.com
+          echo "${{ secrets.HETZNER_SSH_PRIVATE_KEY }}" > private_key
+          ssh-keygen -y -e -f private_key
+          ssh -i private_key root@storj-interface.yral.com
 
   publish_image:
     needs: build_binary
