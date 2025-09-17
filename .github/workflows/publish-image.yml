@@ -46,9 +46,9 @@ jobs:
           # the server figures out what needs to be done
           mkdir -p ~/.ssh
           ssh-keyscan -H example.com >> ~/.ssh/known_hosts
-          echo "${{ secrets.HETZNER_SSH_PRIVATE_KEY }}" > private_key
-          chmod 600 private_key
-          ssh -i private_key root@storj-interface.yral.com
+          # echo "${{ secrets.HETZNER_SSH_PRIVATE_KEY }}" > private_key
+          # chmod 600 private_key
+          # ssh -i private_key root@storj-interface.yral.com
 
   publish_image:
     needs: build_binary
