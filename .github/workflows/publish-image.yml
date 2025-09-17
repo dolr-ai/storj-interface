@@ -17,7 +17,7 @@ jobs:
       publish-artifact: true
 
   release_binary:
-    needs: build_binary
+    # needs: build_binary
     permissions:
       contents: write
       packages: write
@@ -44,9 +44,10 @@ jobs:
         run: |
           # No command needs to be (or can be) specified,
           # the server figures out what needs to be done
-          mkdir .ssh
-          ssh-keyscan storj-interface.yral.com >> ~/.ssh/known_hosts
+          mkdir -p ~/.ssh
+          ssh-keyscan -H example.com >> ~/.ssh/known_hosts
           echo "${{ secrets.HETZNER_SSH_PRIVATE_KEY }}" > private_key
+          chmod 600 private_key
           ssh -i private_key root@storj-interface.yral.com
 
   publish_image:
