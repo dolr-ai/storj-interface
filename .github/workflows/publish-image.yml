@@ -17,29 +17,29 @@ jobs:
       publish-artifact: true
 
   release_binary:
-    # needs: build_binary
+    needs: build_binary
     permissions:
       contents: write
       packages: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # - name: Download build
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: built-binary
-      # - run: |
-      #     chmod +x storj-interface
-      # - name: Generate release name
-      #   run: echo "RELEASE_NAME=$(date +'%Y%m%d')-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: built-binary
+      - run: |
+          chmod +x storj-interface
+      - name: Generate release name
+        run: echo "RELEASE_NAME=$(date +'%Y%m%d')-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
-      # - name: Upload binary as latest release
-      #   uses: softprops/action-gh-release@v2
-      #   with:
-      #     files: storj-interface
-      #     make_latest: true
-      #     fail_on_unmatched_files: true
-      #     tag_name: ${{ env.RELEASE_NAME }}
+      - name: Upload binary as latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: storj-interface
+          make_latest: true
+          fail_on_unmatched_files: true
+          tag_name: ${{ env.RELEASE_NAME }}
       - name: Add key to ssh agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -54,7 +54,7 @@ jobs:
           # the server figures out what needs to be done
           ssh -i private_key root@storj-interface.yral.com
       - name: Run health check
-        run: curl https://storj-interface.yral.com/health
+        run: curl --fail https://storj-interface.yral.com/health
 
   publish_image:
     needs: build_binary
