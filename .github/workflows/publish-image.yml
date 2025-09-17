@@ -41,7 +41,7 @@ jobs:
           fail_on_unmatched_files: true
           tag_name: ${{ env.RELEASE_NAME }}
       - name: Setup private key to hetzner instance
-      - uses: webfactory/ssh-agent@v0.9.0
+        uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
       - name: Request update and restart
