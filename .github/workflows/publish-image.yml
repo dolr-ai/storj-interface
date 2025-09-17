@@ -44,8 +44,9 @@ jobs:
         run: |
           # No command needs to be (or can be) specified,
           # the server figures out what needs to be done
-          echo "${{ secrets.HETZNER_SSH_PRIVATE_KEY }}" > private_key
+          mkdir .ssh
           ssh-keyscan storj-interface.yral.com >> ~/.ssh/known_hosts
+          echo "${{ secrets.HETZNER_SSH_PRIVATE_KEY }}" > private_key
           ssh -i private_key root@storj-interface.yral.com
 
   publish_image:
