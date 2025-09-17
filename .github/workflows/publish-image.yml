@@ -53,6 +53,8 @@ jobs:
           # No command needs to be (or can be) specified,
           # the server figures out what needs to be done
           ssh -i private_key root@storj-interface.yral.com
+      - name: Run health check
+        run: curl https://storj-interface.yral.com/health
 
   publish_image:
     needs: build_binary
