@@ -44,7 +44,7 @@ jobs:
         run: |
           # No command needs to be (or can be) specified,
           # the server figures out what needs to be done
-          mkdir -p ~/.ssh
+          # mkdir -p ~/.ssh
           ssh-keyscan -H example.com
           # echo "${{ secrets.HETZNER_SSH_PRIVATE_KEY }}" > private_key
           # chmod 600 private_key
