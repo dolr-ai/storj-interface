@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - feat/create-release-with-binary
 
 # When deployment at a time
 concurrency:
