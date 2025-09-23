@@ -81,6 +81,7 @@ async fn upload_to_storj(
             "--interactive=false",
             "--analytics=false",
             "--progress=false",
+            "--immutable=false",  // Allow overwriting existing files
             format!("--metadata={metadata_str}").as_str(),
             "--access",
             grant,
@@ -89,6 +90,7 @@ async fn upload_to_storj(
         ])
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
+        .stderr(Stdio::piped())  // Capture stderr for better error messages
         .spawn()?;
 
     let mut pipe = child.stdin.take().expect("Stdin pipe to be opened for us");
@@ -99,10 +101,12 @@ async fn upload_to_storj(
     }
 
     drop(pipe);
-    let status = child.wait().await?;
-    if !status.success() {
+    let output = child.wait_with_output().await?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        eprintln!("Storj upload error for {publisher_user_id}/{video_id}: {stderr}");
         return Err(Error::Io(std::io::Error::other(format!(
-            "uplink command failed with status: {status}"
+            "uplink command failed: {stderr}"
         ))));
     }
 
