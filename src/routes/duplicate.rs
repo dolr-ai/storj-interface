@@ -72,16 +72,24 @@ async fn upload_to_storj(
     };
     let dest = format!("sj://{bucket}/{publisher_user_id}/{video_id}.mp4");
 
+    // Check if file already exists
+    let check_exists = Command::new("uplink")
+        .args(["ls", "--access", grant, dest.as_str()])
+        .output()
+        .await?;
+
+    if check_exists.status.success() {
+        eprintln!("File already exists in Storj: {dest}, skipping upload");
+        return Ok(());
+    }
+
     let metadata_str = serde_json::to_string(metadata)
         .expect("serialization to go through as we are guaranteed utf-8");
 
     let mut child = Command::new("uplink")
         .args([
             "cp",
-            "--interactive=false",
-            "--analytics=false",
             "--progress=false",
-            "--immutable=false", // Allow overwriting existing files
             format!("--metadata={metadata_str}").as_str(),
             "--access",
             grant,
@@ -128,11 +136,16 @@ async fn upload_to_s3(
         s3_metadata.insert(k.clone(), v.clone());
     }
 
+    // Single attempt for now - retries would need to reconstruct the stream
     s3_client
         .upload_video_stream(&key, stream, &s3_metadata)
         .await
         .map_err(|e| {
-            eprintln!("S3 upload error for {publisher_user_id}/{video_id}: {e}",);
+            eprintln!("S3 upload error for {publisher_user_id}/{video_id}: {e}");
+            // Log more details about the error
+            if e.to_string().contains("unhandled") {
+                eprintln!("S3 unhandled error - this might be a timeout or network issue");
+            }
             Error::S3(e.to_string())
         })?;
 
