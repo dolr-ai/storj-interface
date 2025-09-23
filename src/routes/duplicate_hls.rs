@@ -80,14 +80,23 @@ async fn upload_hls_to_storj(
     };
     let dest = format!("sj://{bucket}/{video_id}/hls/{hls_file_name}");
 
+    // Check if file already exists
+    let check_exists = Command::new("uplink")
+        .args(["ls", "--access", grant, dest.as_str()])
+        .output()
+        .await?;
+
+    if check_exists.status.success() {
+        eprintln!("HLS file already exists in Storj: {dest}, skipping upload");
+        return Ok(());
+    }
+
     let metadata_str = serde_json::to_string(metadata)
         .expect("serialization to go through as we are guaranteed utf-8");
 
     let mut child = Command::new("uplink")
         .args([
             "cp",
-            "--interactive=false",
-            "--analytics=false",
             "--progress=false",
             format!("--metadata={metadata_str}").as_str(),
             "--access",
@@ -97,7 +106,7 @@ async fn upload_hls_to_storj(
         ])
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped()) // Capture stderr for better error messages
         .spawn()?;
 
     let mut pipe = child.stdin.take().expect("Stdin pipe to be opened for us");
@@ -105,10 +114,12 @@ async fn upload_hls_to_storj(
     pipe.flush().await?;
     drop(pipe); // Close stdin to signal EOF
 
-    let status = child.wait().await?;
-    if !status.success() {
+    let output = child.wait_with_output().await?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        eprintln!("Storj HLS upload error for {video_id}/{hls_file_name}: {stderr}");
         return Err(Error::Io(std::io::Error::other(format!(
-            "uplink command failed with status: {status}"
+            "uplink command failed: {stderr}"
         ))));
     }
 
