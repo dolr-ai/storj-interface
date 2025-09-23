@@ -89,7 +89,7 @@ async fn upload_hls_to_storj(
             "--interactive=false",
             "--analytics=false",
             "--progress=false",
-            "--immutable=false",  // Allow overwriting existing files
+            "--immutable=false", // Allow overwriting existing files
             format!("--metadata={metadata_str}").as_str(),
             "--access",
             grant,
@@ -98,7 +98,7 @@ async fn upload_hls_to_storj(
         ])
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
-        .stderr(Stdio::piped())  // Capture stderr for better error messages
+        .stderr(Stdio::piped()) // Capture stderr for better error messages
         .spawn()?;
 
     let mut pipe = child.stdin.take().expect("Stdin pipe to be opened for us");
