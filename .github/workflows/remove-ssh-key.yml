@@ -22,7 +22,7 @@ jobs:
 
       - name: Remove tushar@gobazzinga.io key from authorized_keys
         run: |
-            ssh -i private_key root@storj-interface.yral.com
+            ssh -i private_key root@storj-interface.yral.com << 'EOF'
             echo "Backing up authorized_keys..."
             cp ~/.ssh/authorized_keys ~/.ssh/authorized_keys.bak
 
