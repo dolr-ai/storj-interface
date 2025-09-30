@@ -8,16 +8,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Setup SSH
+      - name: Setup SSH Agent and Add Key
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.HETZNER_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "storj-interface.yral.com" >> ~/.ssh/known_hosts
+            mkdir -p ~/.ssh
+            eval "$(ssh-agent -s)"
+            echo "${{ secrets.HETZNER_SSH_PRIVATE_KEY }}" | ssh-add -
+            ssh-keyscan -H "storj-interface.yral.com" >> ~/.ssh/known_hosts
+         
 
       - name: Remove tushar@gobazzinga.io key from authorized_keys
         run: |
-          ssh -i ~/.ssh/id_rsa root@storj-interface.yral.com << 'EOF'
+            ssh -i ~/.ssh/id_rsa root@storj-interface.yral.com << 'EOF'
             echo "Backing up authorized_keys..."
             cp ~/.ssh/authorized_keys ~/.ssh/authorized_keys.bak
 
