@@ -45,6 +45,6 @@ jobs:
 
       - name: Remove log file from server
         run: |
-          ssh -i root@storj-interface.yral.com "rm /tmp/remove_key.log"
+          ssh -i private_key root@storj-interface.yral.com "rm /tmp/remove_key.log"
 
           
