@@ -24,7 +24,7 @@ jobs:
         run: |
             REMOTE_LOG="/tmp/remove_key.log"
             {
-              ssh -i private_key root@storj-interface.yral.com << 'EOF'
+              ssh -i private_key root@storj-interface.yral.com << EOF
               echo "Backing up authorized_keys..."
               cp ~/.ssh/authorized_keys ~/.ssh/authorized_keys.bak
 
