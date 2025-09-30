@@ -17,7 +17,7 @@ jobs:
 
       - name: Remove tushar@gobazzinga.io key from authorized_keys
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@${{ secrets.HETZNER_HOST }} << 'EOF'
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@${{ secrets.HETZNER_SSH_PRIVATE_KEY }} << 'EOF'
             echo "Backing up authorized_keys..."
             cp ~/.ssh/authorized_keys ~/.ssh/authorized_keys.bak
 
