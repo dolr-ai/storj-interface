@@ -21,7 +21,10 @@ jobs:
             echo "Backing up authorized_keys..."
             cp ~/.ssh/authorized_keys ~/.ssh/authorized_keys.bak
 
-            echo "🧹 Removing exact SSH key"
+            echo "Print the keys before"
+            cat ~/.ssh/authorized_keys
+
+            echo "Removing exact SSH key"
             sed -i '/ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIRZB6wnhwQPCwIQMgkG\/dlGTC1UTiiLRJSG7YzzN9B1 tushar@gobazzinga.io/d' ~/.ssh/authorized_keys
 
             echo "Done. Current keys:"
