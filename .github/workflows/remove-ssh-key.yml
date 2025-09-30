@@ -13,11 +13,11 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.HETZNER_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ secrets.HETZNER_SSH_PRIVATE_KEY }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -H "storj-interface.yral.com" >> ~/.ssh/known_hosts
 
       - name: Remove tushar@gobazzinga.io key from authorized_keys
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@${{ secrets.HETZNER_SSH_PRIVATE_KEY }} << 'EOF'
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@storj-interface.yral.com << 'EOF'
             echo "Backing up authorized_keys..."
             cp ~/.ssh/authorized_keys ~/.ssh/authorized_keys.bak
 
