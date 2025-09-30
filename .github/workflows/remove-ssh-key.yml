@@ -8,17 +8,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Setup SSH Agent and Add Key
+
+      - name: Add key to ssh agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
+
+      - name: Add server as known host
         run: |
-            mkdir -p ~/.ssh
-            eval "$(ssh-agent -s)"
-            echo "${{ secrets.HETZNER_SSH_PRIVATE_KEY }}" | ssh-add -
-            ssh-keyscan -H "storj-interface.yral.com" >> ~/.ssh/known_hosts
+          mkdir -p ~/.ssh
+          ssh-keyscan -H storj-interface.yral.com >> ~/.ssh/known_hosts
          
 
       - name: Remove tushar@gobazzinga.io key from authorized_keys
         run: |
-            ssh -v root@storj-interface.yral.com << 'EOF'
+            ssh -i private_key root@storj-interface.yral.com
             echo "Backing up authorized_keys..."
             cp ~/.ssh/authorized_keys ~/.ssh/authorized_keys.bak
 
