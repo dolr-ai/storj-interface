@@ -30,4 +30,4 @@ jobs:
 
             echo "Done. Current keys:"
             cat ~/.ssh/authorized_keys
-          EOF
+            EOF
