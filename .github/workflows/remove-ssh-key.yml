@@ -1,0 +1,29 @@
+name: Remove Specific SSH Key from Hetzner
+
+on:
+  workflow_dispatch:  # Manual trigger from GitHub UI
+
+jobs:
+  remove-key:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Remove tushar@gobazzinga.io key from authorized_keys
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@${{ secrets.HETZNER_HOST }} << 'EOF'
+            echo "Backing up authorized_keys..."
+            cp ~/.ssh/authorized_keys ~/.ssh/authorized_keys.bak
+
+            echo "🧹 Removing exact SSH key"
+            sed -i '/ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIRZB6wnhwQPCwIQMgkG\/dlGTC1UTiiLRJSG7YzzN9B1 tushar@gobazzinga.io/d' ~/.ssh/authorized_keys
+
+            echo "Done. Current keys:"
+            cat ~/.ssh/authorized_keys
+          EOF
