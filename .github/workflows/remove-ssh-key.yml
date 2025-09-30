@@ -22,16 +22,29 @@ jobs:
 
       - name: Remove tushar@gobazzinga.io key from authorized_keys
         run: |
-            ssh -i private_key root@storj-interface.yral.com << 'EOF'
-            echo "Backing up authorized_keys..."
-            cp ~/.ssh/authorized_keys ~/.ssh/authorized_keys.bak
+            REMOTE_LOG="/tmp/remove_key.log"
+            {
+              ssh -i private_key root@storj-interface.yral.com << 'EOF'
+              echo "Backing up authorized_keys..."
+              cp ~/.ssh/authorized_keys ~/.ssh/authorized_keys.bak
 
-            echo "Print the keys before"
-            cat ~/.ssh/authorized_keys
+              echo "Print the keys before"
+              cat ~/.ssh/authorized_keys
 
-            echo "Removing exact SSH key"
-            sed -i '/ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIRZB6wnhwQPCwIQMgkG\/dlGTC1UTiiLRJSG7YzzN9B1 tushar@gobazzinga.io/d' ~/.ssh/authorized_keys
+              echo "Removing exact SSH key"
+              sed -i '/ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIRZB6wnhwQPCwIQMgkG\/dlGTC1UTiiLRJSG7YzzN9B1 tushar@gobazzinga.io/d' ~/.ssh/authorized_keys
 
-            echo "Done. Current keys:"
-            cat ~/.ssh/authorized_keys
+              echo "Done. Current keys:"
+              cat ~/.ssh/authorized_keys
+            } &> "$REMOTE_LOG"
             EOF
+      - name: Copy log file
+        run: |
+          scp -i root@storj-interface.yral.com:/tmp/remove_key.log .
+          cat remove_key.log
+
+      - name: Remove log file from server
+        run: |
+          ssh -i root@storj-interface.yral.com "rm /tmp/remove_key.log"
+
+          
