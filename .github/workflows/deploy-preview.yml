@@ -52,6 +52,9 @@ jobs:
       - name: Deploy
         id: deploy
         uses: superfly/fly-pr-review-apps@1.5.0
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_PR_PREVIEW_DEPLOYMENT_API_TOKEN }}
+          FLY_ORG: gobazzinga-inc-584
         with:
           secrets: |
             STORJ_ACCESS_GRANT_SFW=${{ secrets.STORJ_ACCESS_GRANT }}
@@ -64,6 +67,13 @@ jobs:
             HETZNER_S3_SECRET_KEY=${{ secrets.HETZNER_S3_SECRET_KEY }}
             HETZNER_S3_BUCKET=${{ secrets.HETZNER_S3_BUCKET }}
             HETZNER_S3_REGION=${{ secrets.HETZNER_S3_REGION }}
+      - name: Clean up GitHub environment
+        uses: strumwolf/delete-deployment-environment@v2
+        if: ${{ github.event.action == 'closed' }}
+        with:
+          # ⚠️ The provided token needs permission for admin write:org
+          token: ${{ secrets.GITHUB_TOKEN }}
+          environment: pr-${{ github.event.number }}
 
   e2e-tests:
     needs: preview
