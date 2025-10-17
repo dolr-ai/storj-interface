@@ -3,6 +3,7 @@ Description=Storj interface server
 After=network.target
 
 [Service]
+Restart=always
 Type=exec
 RemainAfterExit=yes
 ExecStart=/usr/local/bin/storj-interface-entrypoint.sh
