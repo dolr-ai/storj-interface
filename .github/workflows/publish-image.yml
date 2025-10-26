@@ -46,12 +46,11 @@ jobs:
       - name: Add server as known host
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H storj-interface.yral.com >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.HETZNER_BARE_METAL_DEPLOY_TARGET_SERVER_IPS }} >> ~/.ssh/known_hosts
       - name: Request update and restart
         run: |
-          # No command needs to be (or can be) specified,
-          # the server figures out what needs to be done
-          ssh -i private_key root@storj-interface.yral.com
+          # Use the update script already on the server
+          ssh root@${{ secrets.HETZNER_BARE_METAL_DEPLOY_TARGET_SERVER_IPS }} /usr/local/bin/update-storj-interface.sh
       - name: Run health check
         run: curl --fail https://storj-interface.yral.com/health
 
