@@ -51,7 +51,7 @@ jobs:
         run: |
           # No command needs to be (or can be) specified,
           # the server figures out what needs to be done
-          ssh -i private_key root@storj-interface.yral.com
+          ssh -o StrictHostKeyChecking=accept-new root@storj-interface.yral.com "echo 'Connected successfully'"
       - name: Run health check
         run: curl --fail https://storj-interface.yral.com/health
 
