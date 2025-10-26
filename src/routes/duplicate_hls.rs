@@ -134,8 +134,8 @@ async fn upload_hls_to_s3(
         .upload_hls_segment(&key, body_data.clone(), &s3_metadata)
         .await
         .map_err(|e| {
-            eprintln!("S3 HLS upload error for {video_id}/{hls_file_name}: {e}",);
-            Error::S3(e.to_string())
+            eprintln!("S3 HLS upload error for {video_id}/{hls_file_name}: {e:?}",);
+            Error::S3(format!("{e:?}"))
         })?;
 
     Ok(())

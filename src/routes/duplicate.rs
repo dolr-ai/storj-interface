@@ -128,8 +128,8 @@ async fn upload_to_s3(
         .upload_video_stream(&key, stream, &s3_metadata)
         .await
         .map_err(|e| {
-            eprintln!("S3 upload error for {publisher_user_id}/{video_id}: {e}",);
-            Error::S3(e.to_string())
+            eprintln!("S3 upload error for {publisher_user_id}/{video_id}: {e:?}",);
+            Error::S3(format!("{e:?}"))
         })?;
 
     Ok(())
