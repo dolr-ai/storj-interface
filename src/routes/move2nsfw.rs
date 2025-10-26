@@ -98,8 +98,8 @@ pub async fn handler(
 
     // Delete from S3 after successful move
     s3_client.delete_video(&s3_key).await.map_err(|e| {
-        eprintln!("S3 delete error for {s3_key}: {e}");
-        Error::S3(e.to_string())
+        eprintln!("S3 delete error for {s3_key}: {e:?}");
+        Error::S3(format!("{e:?}"))
     })?;
 
     Ok((
