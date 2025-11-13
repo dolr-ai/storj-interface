@@ -58,8 +58,10 @@ jobs:
           uplink meta get --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4"
           uplink meta get --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4" | jq -e 'select(.test == "value")'
 
-          # Verify raw uploaded videos exist (from /duplicate_raw endpoint)
+          # Verify raw uploaded videos exist and check metadata (from /duplicate_raw endpoint)
           uplink meta get --access="$ACCESS" "sj://yral-videos/$HURL_publisher/${HURL_video_id}_raw.mp4"
+          uplink meta get --access="$ACCESS" "sj://yral-videos/$HURL_publisher/${HURL_video_id}_raw.mp4" | jq -e 'select(.test == "value")'
+          uplink meta get --access="$ACCESS" "sj://yral-videos/$HURL_publisher/${HURL_video_id}_raw_no_meta.mp4"
           uplink meta get --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/${HURL_video_id}_raw_nsfw.mp4"
 
       - name: Setup for move2nsfw tests
@@ -79,6 +81,7 @@ jobs:
 
           # Clean up raw uploaded videos (from /duplicate_raw endpoint)
           uplink rm --access="$ACCESS" "sj://yral-videos/$HURL_publisher/${HURL_video_id}_raw.mp4" || true
+          uplink rm --access="$ACCESS" "sj://yral-videos/$HURL_publisher/${HURL_video_id}_raw_no_meta.mp4" || true
           uplink rm --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/${HURL_video_id}_raw_nsfw.mp4" || true
 
       # HLS Tests

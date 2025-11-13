@@ -1,6 +1,10 @@
 # SFW videos now go to both Storj and Hetzner S3
-# Check SFW video exists in Storj
+# Check SFW video exists in Storj (with metadata)
 HEAD {{sfw_share}}/{{publisher}}/{{video_id}}_raw.mp4
+HTTP 200
+
+# Check SFW video exists in Storj (without metadata)
+HEAD {{sfw_share}}/{{publisher}}/{{video_id}}_raw_no_meta.mp4
 HTTP 200
 
 # Check NSFW video exists in Storj

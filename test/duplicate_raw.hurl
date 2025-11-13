@@ -1,5 +1,12 @@
-# proper input - SFW video
-POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&video_id={{video_id}}_raw&is_nsfw=false
+# proper input - SFW video with metadata
+POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&video_id={{video_id}}_raw&is_nsfw=false&metadata=%7B%22test%22%3A%22value%22%7D
+Authorization: Bearer {{api_token}}
+Content-Type: application/octet-stream
+file,test-raw-files/test-raw-video.mp4;
+HTTP 200
+
+# proper input - SFW video without metadata
+POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&video_id={{video_id}}_raw_no_meta&is_nsfw=false
 Authorization: Bearer {{api_token}}
 Content-Type: application/octet-stream
 file,test-raw-files/test-raw-video.mp4;
