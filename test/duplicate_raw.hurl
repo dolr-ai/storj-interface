@@ -1,12 +1,12 @@
 # proper input - SFW video
-POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&video_id={{video_id}}_raw&is_nsfw=false&metadata={"test":"value"}
+POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&video_id={{video_id}}_raw&is_nsfw=false
 Authorization: Bearer {{api_token}}
 Content-Type: application/octet-stream
 file,test-raw-files/test-raw-video.mp4;
 HTTP 200
 
 # Segregate nsfw videos
-POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&video_id={{video_id}}_raw_nsfw&is_nsfw=true&metadata={"test":"value"}
+POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&video_id={{video_id}}_raw_nsfw&is_nsfw=true
 Authorization: Bearer {{api_token}}
 Content-Type: application/octet-stream
 file,test-raw-files/test-raw-video.mp4;
