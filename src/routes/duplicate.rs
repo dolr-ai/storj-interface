@@ -1,6 +1,8 @@
-use axum::{extract::State, response::IntoResponse, Json};
+use axum::{body::Body, extract::State, response::IntoResponse, Json};
 use futures_util::StreamExt;
+use http_body_util::BodyExt;
 use reqwest::StatusCode;
+use serde::Deserialize;
 use serde_json::json;
 use std::collections::{BTreeMap, HashMap};
 use std::process::Stdio;
@@ -19,6 +21,9 @@ pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
 
+    #[error(transparent)]
+    Hyper(#[from] axum::Error),
+
     #[error("Cloudflare returned non-ok status ({0}) when fetching the video")]
     Clouflare(StatusCode),
 
@@ -30,7 +35,7 @@ impl IntoResponse for Error {
     fn into_response(self) -> axum::response::Response {
         println!("err: {self}");
         let (status, message) = match self {
-            Error::Network(_) | Error::Io(_) => (
+            Error::Network(_) | Error::Io(_) | Error::Hyper(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error. Check server logs.",
             ),
@@ -188,6 +193,64 @@ pub async fn handler(
             &metadata,
             req.bytes_stream(),
             is_nsfw,
+        )
+        .await?;
+    }
+
+    Ok(())
+}
+
+#[derive(Deserialize)]
+pub struct RawUploadParams {
+    publisher_user_id: String,
+    video_id: String,
+    is_nsfw: bool,
+    #[serde(default)]
+    metadata: BTreeMap<String, String>,
+}
+
+pub async fn handler_raw_upload(
+    State(s3_client): State<S3Client>,
+    axum::extract::Query(params): axum::extract::Query<RawUploadParams>,
+    body: Body,
+) -> Result<impl IntoResponse, Error> {
+    // Collect the body data
+    let body_data = body.collect().await.map_err(Error::Hyper)?.to_bytes();
+
+    if !params.is_nsfw {
+        // For SFW videos, upload to both Storj and S3
+        let body_clone = body_data.clone();
+
+        // Create streams from the collected bytes
+        let storj_stream = futures_util::stream::once(async move { Ok(body_data) });
+        let s3_stream = futures_util::stream::once(async move { Ok(body_clone) });
+
+        let storj_upload = upload_to_storj(
+            &params.publisher_user_id,
+            &params.video_id,
+            &params.metadata,
+            Box::pin(storj_stream),
+            params.is_nsfw,
+        );
+        let s3_upload = upload_to_s3(
+            &s3_client,
+            &params.publisher_user_id,
+            &params.video_id,
+            &params.metadata,
+            s3_stream,
+        );
+
+        tokio::try_join!(storj_upload, s3_upload)?;
+    } else {
+        // For NSFW videos, only upload to Storj
+        let storj_stream = futures_util::stream::once(async move { Ok(body_data) });
+
+        upload_to_storj(
+            &params.publisher_user_id,
+            &params.video_id,
+            &params.metadata,
+            Box::pin(storj_stream),
+            params.is_nsfw,
         )
         .await?;
     }

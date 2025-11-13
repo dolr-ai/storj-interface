@@ -45,17 +45,24 @@ jobs:
       - name: Run duplication tests
         run: |
           hurl --test test/duplicate.hurl
+          hurl --test test/duplicate_raw.hurl
           hurl --test test/confirm_duplicate.hurl
 
       - name: Ensure metadata exists
         run: |
           sleep 1s
-          # Check metadata for both SFW and NSFW videos in Storj
+          # Check metadata for both SFW and NSFW videos in Storj (from /duplicate endpoint)
           # SFW videos now go to both Storj and Hetzner
           uplink meta get --access="$ACCESS" "sj://yral-videos/$HURL_publisher/$HURL_video_id.mp4"
           uplink meta get --access="$ACCESS" "sj://yral-videos/$HURL_publisher/$HURL_video_id.mp4" | jq -e 'select(.test == "value")'
           uplink meta get --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4"
           uplink meta get --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4" | jq -e 'select(.test == "value")'
+
+          # Check metadata for raw uploaded videos (from /duplicate_raw endpoint)
+          uplink meta get --access="$ACCESS" "sj://yral-videos/$HURL_publisher/${HURL_video_id}_raw.mp4"
+          uplink meta get --access="$ACCESS" "sj://yral-videos/$HURL_publisher/${HURL_video_id}_raw.mp4" | jq -e 'select(.test == "value")'
+          uplink meta get --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/${HURL_video_id}_raw_nsfw.mp4"
+          uplink meta get --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/${HURL_video_id}_raw_nsfw.mp4" | jq -e 'select(.test == "value")'
 
       - name: Setup for move2nsfw tests
         run: |
@@ -68,9 +75,13 @@ jobs:
 
       - name: Clean up buckets
         run: |
-          # Clean up both SFW and NSFW videos from Storj
+          # Clean up both SFW and NSFW videos from Storj (from /duplicate endpoint)
           uplink rm --access="$ACCESS" "sj://yral-videos/$HURL_publisher/$HURL_video_id.mp4" || true
-          uplink rm --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4"
+          uplink rm --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4" || true
+
+          # Clean up raw uploaded videos (from /duplicate_raw endpoint)
+          uplink rm --access="$ACCESS" "sj://yral-videos/$HURL_publisher/${HURL_video_id}_raw.mp4" || true
+          uplink rm --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/${HURL_video_id}_raw_nsfw.mp4" || true
 
       # HLS Tests
       - name: Clean up any existing HLS test files

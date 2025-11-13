@@ -44,6 +44,10 @@ echo "Cleaning up S3 test files..."
 if [ -n "$PUBLISHER" ] && [ -n "$VIDEO_ID" ]; then
     echo "Removing test video: $PUBLISHER/$VIDEO_ID.mp4"
     rclone delete "hetzner-s3:$S3_BUCKET/$PUBLISHER/$VIDEO_ID.mp4" --config "$RCLONE_CONFIG" || true
+
+    # Clean up raw uploaded videos
+    echo "Removing raw test video: $PUBLISHER/${VIDEO_ID}_raw.mp4"
+    rclone delete "hetzner-s3:$S3_BUCKET/$PUBLISHER/${VIDEO_ID}_raw.mp4" --config "$RCLONE_CONFIG" || true
 fi
 
 # Clean up HLS test files if they exist
