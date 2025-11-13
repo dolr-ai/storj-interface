@@ -30,18 +30,18 @@ POST {{host}}/duplicate_raw?video_id={{video_id}}_raw&is_nsfw=false
 Authorization: Bearer {{api_token}}
 Content-Type: application/octet-stream
 file,test-raw-files/test-raw-video.mp4;
-HTTP 422
+HTTP 400
 
 # missing required query parameter - video_id
 POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&is_nsfw=false
 Authorization: Bearer {{api_token}}
 Content-Type: application/octet-stream
 file,test-raw-files/test-raw-video.mp4;
-HTTP 422
+HTTP 400
 
 # missing required query parameter - is_nsfw
 POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&video_id={{video_id}}_raw
 Authorization: Bearer {{api_token}}
 Content-Type: application/octet-stream
 file,test-raw-files/test-raw-video.mp4;
-HTTP 422
+HTTP 400
