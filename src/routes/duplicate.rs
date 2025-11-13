@@ -205,15 +205,25 @@ pub struct RawUploadParams {
     publisher_user_id: String,
     video_id: String,
     is_nsfw: bool,
-    #[serde(default)]
-    metadata: BTreeMap<String, String>,
 }
 
 pub async fn handler_raw_upload(
     State(s3_client): State<S3Client>,
     axum::extract::Query(params): axum::extract::Query<RawUploadParams>,
+    headers: axum::http::HeaderMap,
     body: Body,
 ) -> Result<impl IntoResponse, Error> {
+    // Parse metadata from X-Metadata header if present (as JSON string)
+    let metadata = if let Some(metadata_header) = headers.get("x-metadata") {
+        let metadata_str = metadata_header
+            .to_str()
+            .map_err(|_| Error::Io(std::io::Error::other("Invalid metadata header encoding")))?;
+        serde_json::from_str::<BTreeMap<String, String>>(metadata_str)
+            .map_err(|_| Error::Io(std::io::Error::other("Invalid metadata JSON")))?
+    } else {
+        BTreeMap::new()
+    };
+
     // Collect the body data
     let body_data = body.collect().await.map_err(Error::Hyper)?.to_bytes();
 
@@ -228,7 +238,7 @@ pub async fn handler_raw_upload(
         let storj_upload = upload_to_storj(
             &params.publisher_user_id,
             &params.video_id,
-            &params.metadata,
+            &metadata,
             Box::pin(storj_stream),
             params.is_nsfw,
         );
@@ -236,7 +246,7 @@ pub async fn handler_raw_upload(
             &s3_client,
             &params.publisher_user_id,
             &params.video_id,
-            &params.metadata,
+            &metadata,
             s3_stream,
         );
 
@@ -248,7 +258,7 @@ pub async fn handler_raw_upload(
         upload_to_storj(
             &params.publisher_user_id,
             &params.video_id,
-            &params.metadata,
+            &metadata,
             Box::pin(storj_stream),
             params.is_nsfw,
         )

@@ -1,6 +1,7 @@
 # proper input - SFW video with metadata
-POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&video_id={{video_id}}_raw&is_nsfw=false&metadata=%7B%22test%22%3A%22value%22%7D
+POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&video_id={{video_id}}_raw&is_nsfw=false
 Authorization: Bearer {{api_token}}
+X-Metadata: {"test":"value"}
 Content-Type: application/octet-stream
 file,test-raw-files/test-raw-video.mp4;
 HTTP 200
