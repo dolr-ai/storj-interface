@@ -2,7 +2,7 @@
 # Step 1: Initial Upload (with TTL)
 # ============================================================================
 
-# Initial upload - SFW video with default 1h TTL
+# Initial upload - SFW video with 1h TTL
 POST {{host}}/duplicate_raw/upload?publisher_user_id={{publisher}}&video_id={{video_id}}_raw&is_nsfw=false
 Authorization: Bearer {{api_token}}
 Content-Type: application/octet-stream
@@ -11,16 +11,6 @@ HTTP 200
 [Asserts]
 jsonpath "$.status" == "pending"
 jsonpath "$.expires_in_hours" == 1
-
-# Initial upload - SFW video with custom 2h TTL
-POST {{host}}/duplicate_raw/upload?publisher_user_id={{publisher}}&video_id={{video_id}}_raw_2h&is_nsfw=false&ttl_hours=2
-Authorization: Bearer {{api_token}}
-Content-Type: application/octet-stream
-file,test-raw-files/test-raw-video.mp4;
-HTTP 200
-[Asserts]
-jsonpath "$.status" == "pending"
-jsonpath "$.expires_in_hours" == 2
 
 # Initial upload - NSFW video
 POST {{host}}/duplicate_raw/upload?publisher_user_id={{publisher}}&video_id={{video_id}}_raw_nsfw&is_nsfw=true
@@ -78,14 +68,6 @@ Authorization: Bearer {{api_token}}
     "title": "Test Video"
   }
 }
-HTTP 200
-[Asserts]
-jsonpath "$.status" == "completed"
-
-# Finalize - SFW video without metadata
-POST {{host}}/duplicate_raw/finalize?publisher_user_id={{publisher}}&video_id={{video_id}}_raw_2h&is_nsfw=false
-Authorization: Bearer {{api_token}}
-{}
 HTTP 200
 [Asserts]
 jsonpath "$.status" == "completed"

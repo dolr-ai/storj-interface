@@ -13,6 +13,9 @@ use tokio::process::Command;
 use crate::consts::{ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, YRAL_NSFW_VIDEOS, YRAL_VIDEOS};
 use crate::s3_client::S3Client;
 
+// TTL for pending uploads (in hours)
+const PENDING_UPLOAD_TTL_HOURS: u32 = 1;
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
@@ -205,8 +208,6 @@ pub struct RawUploadInitialParams {
     publisher_user_id: String,
     video_id: String,
     is_nsfw: bool,
-    #[serde(default)]
-    ttl_hours: Option<u32>,
 }
 
 #[derive(Deserialize)]
@@ -234,8 +235,7 @@ pub async fn handler_raw_upload_initial(
     pending_metadata.insert("_pending".to_string(), "true".to_string());
     pending_metadata.insert("_uploaded_at".to_string(), chrono::Utc::now().to_rfc3339());
 
-    let ttl_hours = params.ttl_hours.unwrap_or(1);
-    let expires = format!("+{}h", ttl_hours);
+    let expires = format!("+{}h", PENDING_UPLOAD_TTL_HOURS);
 
     if !params.is_nsfw {
         // For SFW videos, upload to both Storj (with TTL) and S3 (without TTL)
@@ -274,7 +274,7 @@ pub async fn handler_raw_upload_initial(
 
     Ok(Json(json!({
         "status": "pending",
-        "expires_in_hours": ttl_hours,
+        "expires_in_hours": PENDING_UPLOAD_TTL_HOURS,
         "message": "Video uploaded successfully. Call /duplicate_raw/finalize to complete the upload."
     })))
 }

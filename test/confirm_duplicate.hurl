@@ -11,10 +11,6 @@ HTTP 200
 HEAD {{sfw_share}}/{{publisher}}/{{video_id}}_raw.mp4
 HTTP 200
 
-# Check SFW video exists in Storj (from /duplicate_raw/finalize endpoint without metadata)
-HEAD {{sfw_share}}/{{publisher}}/{{video_id}}_raw_2h.mp4
-HTTP 200
-
 # Check NSFW video exists in Storj (from /duplicate_raw/finalize endpoint)
 HEAD {{nsfw_share}}/{{publisher}}/{{video_id}}_raw_nsfw.mp4
 HTTP 200
