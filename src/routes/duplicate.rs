@@ -10,7 +10,10 @@ use storj_interface::duplicate::Args;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
-use crate::consts::{ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, YRAL_NSFW_VIDEOS, YRAL_VIDEOS};
+use crate::consts::{
+    ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, STORJ_NSFW_SHARE_URL, STORJ_SFW_SHARE_URL,
+    YRAL_NSFW_VIDEOS, YRAL_VIDEOS,
+};
 use crate::s3_client::S3Client;
 
 #[derive(thiserror::Error, Debug)]
@@ -201,39 +204,123 @@ pub async fn handler(
 }
 
 #[derive(Deserialize)]
-pub struct RawUploadParams {
+pub struct RawUploadInitialParams {
+    publisher_user_id: String,
+    video_id: String,
+    is_nsfw: bool,
+    #[serde(default)]
+    ttl_hours: Option<u32>,
+}
+
+#[derive(Deserialize)]
+pub struct RawFinalizeParams {
     publisher_user_id: String,
     video_id: String,
     is_nsfw: bool,
 }
 
-pub async fn handler_raw_upload(
+#[derive(Deserialize)]
+pub struct RawFinalizeBody {
+    #[serde(default)]
+    metadata: BTreeMap<String, String>,
+}
+
+pub async fn handler_raw_upload_initial(
     State(s3_client): State<S3Client>,
-    axum::extract::Query(params): axum::extract::Query<RawUploadParams>,
-    headers: axum::http::HeaderMap,
+    axum::extract::Query(params): axum::extract::Query<RawUploadInitialParams>,
     body: Body,
 ) -> Result<impl IntoResponse, Error> {
-    // Parse metadata from X-Metadata header if present (as JSON string)
-    let metadata = if let Some(metadata_header) = headers.get("x-metadata") {
-        let metadata_str = metadata_header
-            .to_str()
-            .map_err(|_| Error::Io(std::io::Error::other("Invalid metadata header encoding")))?;
-        serde_json::from_str::<BTreeMap<String, String>>(metadata_str)
-            .map_err(|_| Error::Io(std::io::Error::other("Invalid metadata JSON")))?
-    } else {
-        BTreeMap::new()
-    };
-
     // Collect the body data
     let body_data = body.collect().await.map_err(Error::Hyper)?.to_bytes();
 
+    let mut pending_metadata = BTreeMap::new();
+    pending_metadata.insert("_pending".to_string(), "true".to_string());
+    pending_metadata.insert("_uploaded_at".to_string(), chrono::Utc::now().to_rfc3339());
+
+    let ttl_hours = params.ttl_hours.unwrap_or(1);
+    let expires = format!("+{}h", ttl_hours);
+
     if !params.is_nsfw {
-        // For SFW videos, upload to both Storj and S3
+        // For SFW videos, upload to both Storj (with TTL) and S3 (without TTL)
         let body_clone = body_data.clone();
 
-        // Create streams from the collected bytes
-        let storj_stream = futures_util::stream::once(async move { Ok(body_data) });
+        let storj_upload = upload_to_storj_with_ttl(
+            &params.publisher_user_id,
+            &params.video_id,
+            &pending_metadata,
+            &body_data,
+            &expires,
+            params.is_nsfw,
+        );
+
         let s3_stream = futures_util::stream::once(async move { Ok(body_clone) });
+        let s3_upload = upload_to_s3(
+            &s3_client,
+            &params.publisher_user_id,
+            &params.video_id,
+            &pending_metadata,
+            s3_stream,
+        );
+
+        tokio::try_join!(storj_upload, s3_upload)?;
+    } else {
+        upload_to_storj_with_ttl(
+            &params.publisher_user_id,
+            &params.video_id,
+            &pending_metadata,
+            &body_data,
+            &expires,
+            params.is_nsfw,
+        )
+        .await?;
+    }
+
+    Ok(Json(json!({
+        "status": "pending",
+        "expires_in_hours": ttl_hours,
+        "message": "Video uploaded successfully. Call /duplicate_raw/finalize to complete the upload."
+    })))
+}
+
+pub async fn handler_raw_finalize(
+    State(s3_client): State<S3Client>,
+    axum::extract::Query(params): axum::extract::Query<RawFinalizeParams>,
+    Json(body): Json<RawFinalizeBody>,
+) -> Result<impl IntoResponse, Error> {
+    let metadata = body.metadata;
+
+    let share_url = if params.is_nsfw {
+        STORJ_NSFW_SHARE_URL.as_str()
+    } else {
+        STORJ_SFW_SHARE_URL.as_str()
+    };
+
+    let source = format!(
+        "{}/{}/{}.mp4",
+        share_url, params.publisher_user_id, params.video_id
+    );
+
+    let req = reqwest::get(source).await?;
+    let status = req.status();
+
+    if status != StatusCode::OK {
+        return Err(Error::Io(std::io::Error::other(format!(
+            "Failed to download video from Storj for finalization. Status: {}",
+            status
+        ))));
+    }
+
+    let body_data = req.bytes().await?;
+
+    if !params.is_nsfw {
+        let body_data_clone = body_data.clone();
+
+        let storj_stream =
+            futures_util::stream::once(async move { Ok::<_, reqwest::Error>(body_data.into()) });
+        let s3_stream =
+            futures_util::stream::once(
+                async move { Ok::<_, reqwest::Error>(body_data_clone.into()) },
+            );
 
         let storj_upload = upload_to_storj(
             &params.publisher_user_id,
@@ -242,6 +329,7 @@ pub async fn handler_raw_upload(
             Box::pin(storj_stream),
             params.is_nsfw,
         );
+
         let s3_upload = upload_to_s3(
             &s3_client,
             &params.publisher_user_id,
@@ -253,7 +341,8 @@ pub async fn handler_raw_upload(
         tokio::try_join!(storj_upload, s3_upload)?;
     } else {
         // For NSFW videos, only upload to Storj
-        let storj_stream = futures_util::stream::once(async move { Ok(body_data) });
+        let storj_stream =
+            futures_util::stream::once(async move { Ok::<_, reqwest::Error>(body_data.into()) });
 
         upload_to_storj(
             &params.publisher_user_id,
@@ -263,6 +352,61 @@ pub async fn handler_raw_upload(
             params.is_nsfw,
         )
         .await?;
+    }
+
+    Ok(Json(json!({
+        "status": "completed",
+        "message": "Video finalized successfully with metadata."
+    })))
+}
+
+async fn upload_to_storj_with_ttl(
+    publisher_user_id: &str,
+    video_id: &str,
+    metadata: &BTreeMap<String, String>,
+    body_data: &[u8],
+    expires: &str,
+    is_nsfw: bool,
+) -> Result<(), Error> {
+    let (bucket, grant) = if is_nsfw {
+        (YRAL_NSFW_VIDEOS.as_str(), ACCESS_GRANT_NSFW.as_str())
+    } else {
+        (YRAL_VIDEOS.as_str(), ACCESS_GRANT_SFW.as_str())
+    };
+    let dest = format!("sj://{bucket}/{publisher_user_id}/{video_id}.mp4");
+
+    let metadata_str = serde_json::to_string(metadata)
+        .expect("serialization to go through as we are guaranteed utf-8");
+
+    let mut child = Command::new("uplink")
+        .args([
+            "cp",
+            "--interactive=false",
+            "--analytics=false",
+            "--progress=false",
+            format!("--metadata={metadata_str}").as_str(),
+            "--expires",
+            expires,
+            "--access",
+            grant,
+            "-",
+            dest.as_str(),
+        ])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+
+    let mut pipe = child.stdin.take().expect("Stdin pipe to be opened for us");
+    pipe.write_all(body_data).await?;
+    pipe.flush().await?;
+    drop(pipe);
+
+    let status = child.wait().await?;
+    if !status.success() {
+        return Err(Error::Io(std::io::Error::other(format!(
+            "uplink command failed with status: {status}"
+        ))));
     }
 
     Ok(())

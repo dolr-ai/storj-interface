@@ -48,8 +48,8 @@ if [ -n "$PUBLISHER" ] && [ -n "$VIDEO_ID" ]; then
     # Clean up raw uploaded videos
     echo "Removing raw test video: $PUBLISHER/${VIDEO_ID}_raw.mp4"
     rclone delete "hetzner-s3:$S3_BUCKET/$PUBLISHER/${VIDEO_ID}_raw.mp4" --config "$RCLONE_CONFIG" || true
-    echo "Removing raw test video (no metadata): $PUBLISHER/${VIDEO_ID}_raw_no_meta.mp4"
-    rclone delete "hetzner-s3:$S3_BUCKET/$PUBLISHER/${VIDEO_ID}_raw_no_meta.mp4" --config "$RCLONE_CONFIG" || true
+    echo "Removing raw test video (2h TTL): $PUBLISHER/${VIDEO_ID}_raw_2h.mp4"
+    rclone delete "hetzner-s3:$S3_BUCKET/$PUBLISHER/${VIDEO_ID}_raw_2h.mp4" --config "$RCLONE_CONFIG" || true
 fi
 
 # Clean up HLS test files if they exist

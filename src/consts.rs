@@ -48,3 +48,16 @@ pub static SERVICE_SECRET_TOKEN: Lazy<String> = Lazy::new(|| {
         std::env::var("SERVICE_SECRET_TOKEN").expect("A shared secret to be present")
     )
 });
+
+// Public Storj share URLs for downloading
+pub static STORJ_SFW_SHARE_URL: Lazy<String> = Lazy::new(|| {
+    std::env::var("STORJ_SFW_SHARE_URL").unwrap_or_else(|_| {
+        "https://link.storjshare.io/s/jx6vm3ebgb4gt3gfkmcrw62bl7rq/yral-videos".to_string()
+    })
+});
+
+pub static STORJ_NSFW_SHARE_URL: Lazy<String> = Lazy::new(|| {
+    std::env::var("STORJ_NSFW_SHARE_URL").unwrap_or_else(|_| {
+        "https://link.storjshare.io/s/jwait7tp3civp6cbaot4zzjbheqq/yral-nsfw-videos".to_string()
+    })
+});

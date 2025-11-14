@@ -1,55 +1,122 @@
-# proper input - SFW video with metadata
-POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&video_id={{video_id}}_raw&is_nsfw=false
-Authorization: Bearer {{api_token}}
-X-Metadata: {"test":"value"}
-Content-Type: application/octet-stream
-file,test-raw-files/test-raw-video.mp4;
-HTTP 200
+# ============================================================================
+# Step 1: Initial Upload (with TTL)
+# ============================================================================
 
-# proper input - SFW video without metadata
-POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&video_id={{video_id}}_raw_no_meta&is_nsfw=false
+# Initial upload - SFW video with default 1h TTL
+POST {{host}}/duplicate_raw/upload?publisher_user_id={{publisher}}&video_id={{video_id}}_raw&is_nsfw=false
 Authorization: Bearer {{api_token}}
 Content-Type: application/octet-stream
 file,test-raw-files/test-raw-video.mp4;
 HTTP 200
+[Asserts]
+jsonpath "$.status" == "pending"
+jsonpath "$.expires_in_hours" == 1
 
-# Segregate nsfw videos
-POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&video_id={{video_id}}_raw_nsfw&is_nsfw=true
+# Initial upload - SFW video with custom 2h TTL
+POST {{host}}/duplicate_raw/upload?publisher_user_id={{publisher}}&video_id={{video_id}}_raw_2h&is_nsfw=false&ttl_hours=2
 Authorization: Bearer {{api_token}}
 Content-Type: application/octet-stream
 file,test-raw-files/test-raw-video.mp4;
 HTTP 200
+[Asserts]
+jsonpath "$.status" == "pending"
+jsonpath "$.expires_in_hours" == 2
 
-# Without auth token
-POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&video_id={{video_id}}_raw&is_nsfw=false
+# Initial upload - NSFW video
+POST {{host}}/duplicate_raw/upload?publisher_user_id={{publisher}}&video_id={{video_id}}_raw_nsfw&is_nsfw=true
+Authorization: Bearer {{api_token}}
+Content-Type: application/octet-stream
+file,test-raw-files/test-raw-video.mp4;
+HTTP 200
+[Asserts]
+jsonpath "$.status" == "pending"
+
+# Initial upload - Without auth token
+POST {{host}}/duplicate_raw/upload?publisher_user_id={{publisher}}&video_id={{video_id}}_raw&is_nsfw=false
 Content-Type: application/octet-stream
 file,test-raw-files/test-raw-video.mp4;
 HTTP 401
 
-# With wrong token
-POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&video_id={{video_id}}_raw&is_nsfw=false
+# Initial upload - With wrong token
+POST {{host}}/duplicate_raw/upload?publisher_user_id={{publisher}}&video_id={{video_id}}_raw&is_nsfw=false
 Authorization: Bearer wrongtoken
 Content-Type: application/octet-stream
 file,test-raw-files/test-raw-video.mp4;
 HTTP 401
 
-# missing required query parameter - publisher_user_id
-POST {{host}}/duplicate_raw?video_id={{video_id}}_raw&is_nsfw=false
+# Initial upload - missing required query parameter publisher_user_id
+POST {{host}}/duplicate_raw/upload?video_id={{video_id}}_raw&is_nsfw=false
 Authorization: Bearer {{api_token}}
 Content-Type: application/octet-stream
 file,test-raw-files/test-raw-video.mp4;
 HTTP 400
 
-# missing required query parameter - video_id
-POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&is_nsfw=false
+# Initial upload - missing required query parameter video_id
+POST {{host}}/duplicate_raw/upload?publisher_user_id={{publisher}}&is_nsfw=false
 Authorization: Bearer {{api_token}}
 Content-Type: application/octet-stream
 file,test-raw-files/test-raw-video.mp4;
 HTTP 400
 
-# missing required query parameter - is_nsfw
-POST {{host}}/duplicate_raw?publisher_user_id={{publisher}}&video_id={{video_id}}_raw
+# Initial upload - missing required query parameter is_nsfw
+POST {{host}}/duplicate_raw/upload?publisher_user_id={{publisher}}&video_id={{video_id}}_raw
 Authorization: Bearer {{api_token}}
 Content-Type: application/octet-stream
 file,test-raw-files/test-raw-video.mp4;
 HTTP 400
+
+# ============================================================================
+# Step 2: Finalize Upload (with metadata, removes TTL)
+# ============================================================================
+
+# Finalize - SFW video with metadata
+POST {{host}}/duplicate_raw/finalize?publisher_user_id={{publisher}}&video_id={{video_id}}_raw&is_nsfw=false
+Authorization: Bearer {{api_token}}
+{
+  "metadata": {
+    "test": "value",
+    "title": "Test Video"
+  }
+}
+HTTP 200
+[Asserts]
+jsonpath "$.status" == "completed"
+
+# Finalize - SFW video without metadata
+POST {{host}}/duplicate_raw/finalize?publisher_user_id={{publisher}}&video_id={{video_id}}_raw_2h&is_nsfw=false
+Authorization: Bearer {{api_token}}
+{}
+HTTP 200
+[Asserts]
+jsonpath "$.status" == "completed"
+
+# Finalize - NSFW video with metadata
+POST {{host}}/duplicate_raw/finalize?publisher_user_id={{publisher}}&video_id={{video_id}}_raw_nsfw&is_nsfw=true
+Authorization: Bearer {{api_token}}
+{
+  "metadata": {
+    "test": "value"
+  }
+}
+HTTP 200
+[Asserts]
+jsonpath "$.status" == "completed"
+
+# Finalize - Without auth token
+POST {{host}}/duplicate_raw/finalize?publisher_user_id={{publisher}}&video_id={{video_id}}_raw&is_nsfw=false
+{
+  "metadata": {
+    "test": "value"
+  }
+}
+HTTP 401
+
+# Finalize - With wrong token
+POST {{host}}/duplicate_raw/finalize?publisher_user_id={{publisher}}&video_id={{video_id}}_raw&is_nsfw=false
+Authorization: Bearer wrongtoken
+{
+  "metadata": {
+    "test": "value"
+  }
+}
+HTTP 401
