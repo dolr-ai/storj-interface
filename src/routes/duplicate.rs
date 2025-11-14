@@ -316,11 +316,9 @@ pub async fn handler_raw_finalize(
         let body_data_clone = body_data.clone();
 
         let storj_stream =
-            futures_util::stream::once(async move { Ok::<_, reqwest::Error>(body_data.into()) });
+            futures_util::stream::once(async move { Ok::<_, reqwest::Error>(body_data) });
         let s3_stream =
-            futures_util::stream::once(
-                async move { Ok::<_, reqwest::Error>(body_data_clone.into()) },
-            );
+            futures_util::stream::once(async move { Ok::<_, reqwest::Error>(body_data_clone) });
 
         let storj_upload = upload_to_storj(
             &params.publisher_user_id,
@@ -342,7 +340,7 @@ pub async fn handler_raw_finalize(
     } else {
         // For NSFW videos, only upload to Storj
         let storj_stream =
-            futures_util::stream::once(async move { Ok::<_, reqwest::Error>(body_data.into()) });
+            futures_util::stream::once(async move { Ok::<_, reqwest::Error>(body_data) });
 
         upload_to_storj(
             &params.publisher_user_id,
