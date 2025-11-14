@@ -303,7 +303,7 @@ pub async fn handler_raw_finalize(
         params.publisher_user_id, params.video_id
     );
 
-    let mut download_child = Command::new("uplink")
+    let download_child = Command::new("uplink")
         .args([
             "cp",
             "--interactive=false",
@@ -318,11 +318,13 @@ pub async fn handler_raw_finalize(
         .stderr(Stdio::piped())
         .spawn()?;
 
-    let download_status = download_child.wait().await?;
-    if !download_status.success() {
+    let output = download_child.wait_with_output().await?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        eprintln!("Uplink download failed: {}", stderr);
         return Err(Error::Io(std::io::Error::other(format!(
-            "Failed to download video from Storj for finalization: {}",
-            download_status
+            "Failed to download video from Storj for finalization. Status: {}, Error: {}",
+            output.status, stderr
         ))));
     }
 
