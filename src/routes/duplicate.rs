@@ -297,34 +297,55 @@ pub async fn handler_raw_finalize(
         bucket, params.publisher_user_id, params.video_id
     );
 
-    // Download to temporary file
+    // Download to temporary file with retry logic
     let temp_file = format!(
         "/tmp/storj-finalize-{}-{}.mp4",
         params.publisher_user_id, params.video_id
     );
 
-    let download_child = Command::new("uplink")
-        .args([
-            "cp",
-            "--interactive=false",
-            "--analytics=false",
-            "--progress=false",
-            "--access",
-            grant,
-            src_path.as_str(),
-            temp_file.as_str(),
-        ])
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .spawn()?;
+    let max_retries = 3;
+    let retry_delay = std::time::Duration::from_secs(2);
+    let mut last_error = String::new();
 
-    let output = download_child.wait_with_output().await?;
-    if !output.status.success() {
+    for attempt in 1..=max_retries {
+        let download_child = Command::new("uplink")
+            .args([
+                "cp",
+                "--interactive=false",
+                "--analytics=false",
+                "--progress=false",
+                "--access",
+                grant,
+                src_path.as_str(),
+                temp_file.as_str(),
+            ])
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()?;
+
+        let output = download_child.wait_with_output().await?;
+
+        if output.status.success() {
+            break;
+        }
+
         let stderr = String::from_utf8_lossy(&output.stderr);
-        eprintln!("Uplink download failed: {}", stderr);
+        last_error = stderr.to_string();
+        eprintln!(
+            "Uplink download attempt {}/{} failed: {}",
+            attempt, max_retries, stderr
+        );
+
+        if attempt < max_retries {
+            tokio::time::sleep(retry_delay).await;
+        }
+    }
+
+    // Check if file exists after retries
+    if !tokio::fs::try_exists(&temp_file).await.unwrap_or(false) {
         return Err(Error::Io(std::io::Error::other(format!(
-            "Failed to download video from Storj for finalization. Status: {}, Error: {}",
-            output.status, stderr
+            "Failed to download video from Storj after {} retries. Last error: {}",
+            max_retries, last_error
         ))));
     }
 
