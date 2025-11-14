@@ -10,10 +10,7 @@ use storj_interface::duplicate::Args;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
-use crate::consts::{
-    ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, STORJ_NSFW_SHARE_URL, STORJ_SFW_SHARE_URL,
-    YRAL_NSFW_VIDEOS, YRAL_VIDEOS,
-};
+use crate::consts::{ACCESS_GRANT_NSFW, ACCESS_GRANT_SFW, YRAL_NSFW_VIDEOS, YRAL_VIDEOS};
 use crate::s3_client::S3Client;
 
 #[derive(thiserror::Error, Debug)]
@@ -289,36 +286,60 @@ pub async fn handler_raw_finalize(
 ) -> Result<impl IntoResponse, Error> {
     let metadata = body.metadata;
 
-    let share_url = if params.is_nsfw {
-        STORJ_NSFW_SHARE_URL.as_str()
+    let (bucket, grant) = if params.is_nsfw {
+        (YRAL_NSFW_VIDEOS.as_str(), ACCESS_GRANT_NSFW.as_str())
     } else {
-        STORJ_SFW_SHARE_URL.as_str()
+        (YRAL_VIDEOS.as_str(), ACCESS_GRANT_SFW.as_str())
     };
 
-    let source = format!(
-        "{}/{}/{}.mp4",
-        share_url, params.publisher_user_id, params.video_id
+    let src_path = format!(
+        "sj://{}/{}/{}.mp4",
+        bucket, params.publisher_user_id, params.video_id
     );
 
-    let req = reqwest::get(source).await?;
-    let status = req.status();
+    // Download to temporary file
+    let temp_file = format!(
+        "/tmp/storj-finalize-{}-{}.mp4",
+        params.publisher_user_id, params.video_id
+    );
 
-    if status != StatusCode::OK {
+    let mut download_child = Command::new("uplink")
+        .args([
+            "cp",
+            "--interactive=false",
+            "--analytics=false",
+            "--progress=false",
+            "--access",
+            grant,
+            src_path.as_str(),
+            temp_file.as_str(),
+        ])
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let download_status = download_child.wait().await?;
+    if !download_status.success() {
         return Err(Error::Io(std::io::Error::other(format!(
-            "Failed to download video from Storj for finalization. Status: {}",
-            status
+            "Failed to download video from Storj for finalization: {}",
+            download_status
         ))));
     }
 
-    let body_data = req.bytes().await?;
+    // Read the file data
+    let file_data = tokio::fs::read(&temp_file).await?;
 
+    // Re-upload with final metadata (no TTL)
     if !params.is_nsfw {
-        let body_data_clone = body_data.clone();
+        // For SFW videos, upload to both Storj and S3
+        let file_data_clone = file_data.clone();
 
         let storj_stream =
-            futures_util::stream::once(async move { Ok::<_, reqwest::Error>(body_data) });
+            futures_util::stream::once(async move { Ok::<_, reqwest::Error>(file_data.into()) });
         let s3_stream =
-            futures_util::stream::once(async move { Ok::<_, reqwest::Error>(body_data_clone) });
+            futures_util::stream::once(
+                async move { Ok::<_, reqwest::Error>(file_data_clone.into()) },
+            );
 
         let storj_upload = upload_to_storj(
             &params.publisher_user_id,
@@ -340,7 +361,7 @@ pub async fn handler_raw_finalize(
     } else {
         // For NSFW videos, only upload to Storj
         let storj_stream =
-            futures_util::stream::once(async move { Ok::<_, reqwest::Error>(body_data) });
+            futures_util::stream::once(async move { Ok::<_, reqwest::Error>(file_data.into()) });
 
         upload_to_storj(
             &params.publisher_user_id,
@@ -351,6 +372,9 @@ pub async fn handler_raw_finalize(
         )
         .await?;
     }
+
+    // Clean up temp file
+    tokio::fs::remove_file(&temp_file).await.ok();
 
     Ok(Json(json!({
         "status": "completed",
