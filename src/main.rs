@@ -47,11 +47,14 @@ async fn main() -> anyhow::Result<()> {
                 .layer(middleware::from_fn(authorize)),
         )
         .route(
-            "/duplicate_raw",
-            post(routes::duplicate::handler_raw_upload)
+            "/duplicate_raw/upload",
+            post(routes::duplicate::handler_raw_upload_initial)
                 .with_state(s3_client.clone())
-                .layer(DefaultBodyLimit::max(500 * 1024 * 1024)) // 500MB limit for raw video upload
-                .layer(middleware::from_fn(authorize)),
+                .layer(DefaultBodyLimit::max(500 * 1024 * 1024)), // 500MB limit for raw video upload
+        )
+        .route(
+            "/duplicate_raw/finalize",
+            post(routes::duplicate::handler_raw_finalize).with_state(s3_client.clone()),
         )
         // NOTE: This will be removed as the upload happens in the very end of the pipeline and nsfw flag is passed into duplicate
         .route(
