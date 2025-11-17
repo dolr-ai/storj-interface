@@ -1,7 +1,7 @@
 use anyhow::Context;
 use axum::{
     extract::{DefaultBodyLimit, Request},
-    http::HeaderMap,
+    http::{HeaderMap, Method},
     middleware::{self, Next},
     response::IntoResponse,
     routing::{get, post},
@@ -16,6 +16,7 @@ use once_cell::sync::Lazy;
 use reqwest::{header::AUTHORIZATION, StatusCode};
 use std::sync::Arc;
 use tokio::{signal, sync::Notify};
+use tower_http::cors::{Any, CorsLayer};
 
 pub(crate) mod consts;
 mod routes;
@@ -38,6 +39,12 @@ async fn main() -> anyhow::Result<()> {
 
     // Initialize S3 client
     let s3_client = s3_client::S3Client::new().await;
+
+    // Configure CORS to allow cross-origin requests
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers(Any);
 
     let app = Router::new()
         .route(
@@ -70,7 +77,8 @@ async fn main() -> anyhow::Result<()> {
                 .layer(DefaultBodyLimit::max(100 * 1024 * 1024)) // 100MB limit for HLS files
                 .layer(middleware::from_fn(authorize)),
         )
-        .route("/health", get(health));
+        .route("/health", get(health))
+        .layer(cors);
 
     let addr = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 
