@@ -47,6 +47,9 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ vars.HETZNER_BARE_METAL_DEPLOY_TARGET_SERVER_IPS }} >> ~/.ssh/known_hosts
+      - name: Ensure ffmpeg is installed on server
+        run: |
+          ssh root@${{ vars.HETZNER_BARE_METAL_DEPLOY_TARGET_SERVER_IPS }} 'apt-get update && apt-get install -y ffmpeg'
       - name: Request update and restart
         run: |
           # Use the update script already on the server
