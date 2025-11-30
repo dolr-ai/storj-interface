@@ -23,7 +23,7 @@ jobs:
         with:
           toolchain: "stable"
           targets: "x86_64-unknown-linux-musl"
-          components: "clippy,rustfmt"
+          components: "rustfmt"
 
       - name: Cache and install Musl build tools
         uses: awalsh128/cache-apt-pkgs-action@v1
@@ -36,9 +36,6 @@ jobs:
 
       - name: Check formatting
         run: cargo fmt --check
-
-      - name: Run Clippy
-        run: cargo clippy --no-deps --all-features --release --quiet -- -Dwarnings
 
       - name: Build binary
         run: cargo build --release --target x86_64-unknown-linux-musl

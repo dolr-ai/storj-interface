@@ -351,41 +351,61 @@ pub async fn handler(
         return Err(Error::Clouflare(status));
     }
 
+    // Collect all bytes into memory to extract thumbnail and upload
+    let body = req.bytes().await?;
+
+    // Extract thumbnail from video
+    let thumbnail_data = extract_thumbnail(&body).await?;
+
     if !is_nsfw {
-        // Collect all bytes into memory for SFW videos as we need to upload to both Storj and S3
-        // Stream clone aint working
-        let body = req.bytes().await?;
+        // For SFW videos, upload to both Storj and S3
         let body_clone = body.clone();
+        let thumbnail_clone = thumbnail_data.clone();
 
         // Create streams from the collected bytes
         let storj_stream = futures_util::stream::once(async move { Ok(body) });
         let s3_stream = futures_util::stream::once(async move { Ok(body_clone) });
 
-        let storj_upload = upload_to_storj(
+        let storj_video_upload = upload_to_storj(
             &publisher_user_id,
             &video_id,
             &metadata,
             Box::pin(storj_stream),
             is_nsfw,
         );
-        let s3_upload = upload_to_s3(
+        let storj_thumbnail_upload =
+            upload_thumbnail_to_storj(&publisher_user_id, &video_id, &thumbnail_data, is_nsfw);
+        let s3_video_upload = upload_to_s3(
             &s3_client,
             &publisher_user_id,
             &video_id,
             &metadata,
             s3_stream,
         );
+        let s3_thumbnail_upload =
+            upload_thumbnail_to_s3(&s3_client, &publisher_user_id, &video_id, thumbnail_clone);
 
-        tokio::try_join!(storj_upload, s3_upload)?;
+        tokio::try_join!(
+            storj_video_upload,
+            storj_thumbnail_upload,
+            s3_video_upload,
+            s3_thumbnail_upload
+        )?;
     } else {
-        upload_to_storj(
+        // For NSFW videos, only upload to Storj
+        let storj_stream = futures_util::stream::once(async move { Ok::<_, reqwest::Error>(body) });
+
+        let storj_video_upload = upload_to_storj(
             &publisher_user_id,
             &video_id,
             &metadata,
-            req.bytes_stream(),
+            Box::pin(storj_stream),
             is_nsfw,
-        )
-        .await?;
+        );
+        let storj_thumbnail_upload =
+            upload_thumbnail_to_storj(&publisher_user_id, &video_id, &thumbnail_data, is_nsfw);
+
+        tokio::try_join!(storj_video_upload, storj_thumbnail_upload)?;
     }
 
     Ok(())
