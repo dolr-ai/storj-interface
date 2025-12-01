@@ -61,14 +61,14 @@ pub async fn handler(
         Error::S3(e)
     })?;
 
-    // Download thumbnail from S3
-    let thumbnail_data = s3_client
-        .download_thumbnail(&s3_thumbnail_key)
-        .await
-        .map_err(|e| {
-            eprintln!("S3 thumbnail download error for {s3_thumbnail_key}: {e}");
-            Error::S3(e)
-        })?;
+    // Download thumbnail from S3 (optional - may not exist for older videos)
+    let thumbnail_data = match s3_client.download_thumbnail(&s3_thumbnail_key).await {
+        Ok(data) => Some(data),
+        Err(e) => {
+            eprintln!("S3 thumbnail download failed (may not exist): {s3_thumbnail_key}: {e}");
+            None
+        }
+    };
 
     // Upload video to Storj NSFW bucket
     let video_dest = format!(
@@ -109,43 +109,40 @@ pub async fn handler(
         ));
     }
 
-    // Upload thumbnail to Storj NSFW bucket
-    let thumbnail_dest = format!(
-        "sj://{}/{}/{}_thumbnail.png",
-        YRAL_NSFW_VIDEOS.as_str(),
-        request.publisher_user_id,
-        request.video_id
-    );
+    // Upload thumbnail to Storj NSFW bucket (if it exists)
+    if let Some(ref thumbnail_data) = thumbnail_data {
+        let thumbnail_dest = format!(
+            "sj://{}/{}/{}_thumbnail.png",
+            YRAL_NSFW_VIDEOS.as_str(),
+            request.publisher_user_id,
+            request.video_id
+        );
 
-    let mut child = Command::new("uplink")
-        .args([
-            "cp",
-            "--interactive=false",
-            "--analytics=false",
-            "--progress=false",
-            "--access",
-            ACCESS_GRANT_NSFW.as_str(),
-            "-",
-            thumbnail_dest.as_str(),
-        ])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .spawn()?;
+        let mut child = Command::new("uplink")
+            .args([
+                "cp",
+                "--interactive=false",
+                "--analytics=false",
+                "--progress=false",
+                "--access",
+                ACCESS_GRANT_NSFW.as_str(),
+                "-",
+                thumbnail_dest.as_str(),
+            ])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .spawn()?;
 
-    let mut pipe = child.stdin.take().expect("Stdin pipe to be opened for us");
-    pipe.write_all(&thumbnail_data).await?;
-    pipe.flush().await?;
-    drop(pipe);
+        let mut pipe = child.stdin.take().expect("Stdin pipe to be opened for us");
+        pipe.write_all(thumbnail_data).await?;
+        pipe.flush().await?;
+        drop(pipe);
 
-    let status = child.wait().await?;
+        let status = child.wait().await?;
 
-    if !status.success() {
-        return Ok((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({
-                "message": "Failed to upload thumbnail to Storj NSFW bucket. Check server logs."
-            })),
-        ));
+        if !status.success() {
+            eprintln!("Failed to upload thumbnail to Storj NSFW bucket, continuing anyway");
+        }
     }
 
     // Delete video from S3 after successful move
@@ -154,14 +151,12 @@ pub async fn handler(
         Error::S3(format!("{e:?}"))
     })?;
 
-    // Delete thumbnail from S3 after successful move
-    s3_client
-        .delete_thumbnail(&s3_thumbnail_key)
-        .await
-        .map_err(|e| {
-            eprintln!("S3 thumbnail delete error for {s3_thumbnail_key}: {e:?}");
-            Error::S3(format!("{e:?}"))
-        })?;
+    // Delete thumbnail from S3 if it existed
+    if thumbnail_data.is_some() {
+        if let Err(e) = s3_client.delete_thumbnail(&s3_thumbnail_key).await {
+            eprintln!("S3 thumbnail delete error (non-fatal): {s3_thumbnail_key}: {e:?}");
+        }
+    }
 
     Ok((
         StatusCode::OK,

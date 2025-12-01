@@ -64,8 +64,13 @@ jobs:
           uplink meta get --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/${HURL_video_id}_raw_nsfw.mp4"
           uplink meta get --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/${HURL_video_id}_raw_nsfw.mp4" | jq -e 'select(.test == "value")'
 
+          # Verify thumbnails were created for /duplicate endpoint
+          echo "Checking thumbnails exist for /duplicate endpoint..."
+          uplink ls --access="$ACCESS" "sj://yral-videos/$HURL_publisher/${HURL_video_id}_thumbnail.png"
+          uplink ls --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/${HURL_video_id}_thumbnail.png"
+
           # Verify thumbnails were created for raw uploads
-          echo "Checking thumbnails exist..."
+          echo "Checking thumbnails exist for raw uploads..."
           uplink ls --access="$ACCESS" "sj://yral-videos/$HURL_publisher/${HURL_video_id}_raw_thumbnail.png"
           uplink ls --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/${HURL_video_id}_raw_nsfw_thumbnail.png"
 
@@ -84,11 +89,15 @@ jobs:
           uplink rm --access="$ACCESS" "sj://yral-videos/$HURL_publisher/$HURL_video_id.mp4" || true
           uplink rm --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/$HURL_video_id.mp4" || true
 
+          # Clean up /duplicate endpoint thumbnails
+          uplink rm --access="$ACCESS" "sj://yral-videos/$HURL_publisher/${HURL_video_id}_thumbnail.png" || true
+          uplink rm --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/${HURL_video_id}_thumbnail.png" || true
+
           # Clean up raw uploaded videos (from /duplicate_raw/finalize endpoint)
           uplink rm --access="$ACCESS" "sj://yral-videos/$HURL_publisher/${HURL_video_id}_raw.mp4" || true
           uplink rm --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/${HURL_video_id}_raw_nsfw.mp4" || true
 
-          # Clean up thumbnails
+          # Clean up raw upload thumbnails
           uplink rm --access="$ACCESS" "sj://yral-videos/$HURL_publisher/${HURL_video_id}_raw_thumbnail.png" || true
           uplink rm --access="$ACCESS" "sj://yral-nsfw-videos/$HURL_publisher/${HURL_video_id}_raw_nsfw_thumbnail.png" || true
 
