@@ -128,4 +128,44 @@ impl S3Client {
             .await?;
         Ok(())
     }
+
+    pub async fn upload_thumbnail(
+        &self,
+        key: &str,
+        data: Vec<u8>,
+    ) -> Result<(), aws_sdk_s3::Error> {
+        self.client
+            .put_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .body(ByteStream::from(data))
+            .content_type("image/png")
+            .send()
+            .await?;
+        Ok(())
+    }
+
+    pub async fn download_thumbnail(&self, key: &str) -> Result<Vec<u8>, String> {
+        let resp = self
+            .client
+            .get_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let data = resp.body.collect().await.map_err(|e| e.to_string())?;
+        Ok(data.into_bytes().to_vec())
+    }
+
+    pub async fn delete_thumbnail(&self, key: &str) -> Result<(), aws_sdk_s3::Error> {
+        self.client
+            .delete_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .send()
+            .await?;
+        Ok(())
+    }
 }
